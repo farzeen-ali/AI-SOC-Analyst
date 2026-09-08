@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 import { AuroraBackground } from "@/components/brand/aurora-background";
-import { ScrollReveal } from "@/components/marketing/scroll-reveal";
+import { Reveal } from "@/components/motion/reveal";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { Button } from "@/components/ui/button";
@@ -73,7 +73,7 @@ export default function SecurityPage() {
       <section className="relative px-6 pt-32 pb-16 sm:pt-40">
         <AuroraBackground subtle />
 
-        <ScrollReveal className="mx-auto max-w-3xl space-y-5 text-center">
+        <Reveal className="mx-auto max-w-3xl space-y-5 text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1.5 font-mono text-[0.65rem] tracking-[0.14em] text-muted-foreground uppercase backdrop-blur">
             <ShieldCheckIcon className="size-3 text-primary" />
             Security overview
@@ -87,7 +87,7 @@ export default function SecurityPage() {
             what GuardAI enforces today, at the database, the request boundary,
             and the session layer.
           </p>
-        </ScrollReveal>
+        </Reveal>
       </section>
 
       <section className="px-6 pb-24">
@@ -95,7 +95,7 @@ export default function SecurityPage() {
           {GROUPS.map((group, index) => {
             const Icon = group.icon;
             return (
-              <ScrollReveal key={group.title} index={index}>
+              <Reveal key={group.title} index={index}>
                 <article className="h-full rounded-2xl border border-border/60 bg-card/60 p-5 backdrop-blur-xl">
                   <div className="flex items-center gap-2.5">
                     <span className="flex size-9 items-center justify-center rounded-xl border border-primary/25 bg-primary/10">
@@ -118,14 +118,14 @@ export default function SecurityPage() {
                     ))}
                   </ul>
                 </article>
-              </ScrollReveal>
+              </Reveal>
             );
           })}
         </div>
       </section>
 
       <section className="px-6 pb-24">
-        <ScrollReveal className="mx-auto w-full max-w-5xl">
+        <Reveal className="mx-auto w-full max-w-5xl">
           <div className="flex flex-col gap-5 rounded-2xl border border-border/60 bg-card/50 p-6 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
               <ServerIcon className="mt-0.5 size-5 shrink-0 text-primary" />
@@ -151,7 +151,7 @@ export default function SecurityPage() {
               Create a workspace
             </Button>
           </div>
-        </ScrollReveal>
+        </Reveal>
       </section>
 
       <SiteFooter />

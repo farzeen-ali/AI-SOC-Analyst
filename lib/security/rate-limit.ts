@@ -25,6 +25,8 @@ export const RATE_LIMITS = {
   otpVerify: { tokens: 10, window: "15 m", seconds: 900 },
   passwordReset: { tokens: 5, window: "15 m", seconds: 900 },
   mutation: { tokens: 30, window: "1 m", seconds: 60 },
+  uploadPrepare: { tokens: 20, window: "10 m", seconds: 600 },
+  uploadCommit: { tokens: 20, window: "10 m", seconds: 600 },
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

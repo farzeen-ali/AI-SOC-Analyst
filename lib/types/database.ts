@@ -8,6 +8,22 @@
 export type GlobalRole = "super_admin" | "user";
 export type WorkspaceRole = "tenant_admin" | "member";
 export type WorkspacePlan = "free" | "pro";
+
+/** Phase 2 — ingestion pipeline. */
+export type LogFormat = "json" | "csv" | "syslog" | "plaintext";
+export type IngestStatus =
+  | "pending"
+  | "queued"
+  | "parsing"
+  | "embedding"
+  | "analyzing"
+  | "completed"
+  | "failed";
+export type FindingStatus =
+  | "open"
+  | "acknowledged"
+  | "resolved"
+  | "dismissed";
 export type SubscriptionStatus =
   | "active"
   | "trialing"
@@ -173,14 +189,169 @@ export interface Database {
         };
         Relationships: [];
       };
+      log_files: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          uploaded_by: string | null;
+          filename: string;
+          storage_path: string;
+          mime_type: string;
+          size_bytes: number;
+          format: LogFormat;
+          status: IngestStatus;
+          error_message: string | null;
+          event_count: number;
+          chunk_count: number;
+          masked_count: number;
+          checksum: string | null;
+          created_at: string;
+          updated_at: string;
+          processed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          uploaded_by?: string | null;
+          filename: string;
+          storage_path: string;
+          mime_type: string;
+          size_bytes: number;
+          format: LogFormat;
+          status?: IngestStatus;
+          error_message?: string | null;
+          event_count?: number;
+          chunk_count?: number;
+          masked_count?: number;
+          checksum?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          processed_at?: string | null;
+        };
+        Update: {
+          status?: IngestStatus;
+          error_message?: string | null;
+          event_count?: number;
+          chunk_count?: number;
+          masked_count?: number;
+          checksum?: string | null;
+          // Rewritten at commit time from the real object size in storage.
+          size_bytes?: number;
+          format?: LogFormat;
+          updated_at?: string;
+          processed_at?: string | null;
+        };
+        Relationships: [];
+      };
+      log_chunks: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          file_id: string;
+          chunk_index: number;
+          content: string;
+          token_estimate: number;
+          metadata: Json;
+          embedding: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          file_id: string;
+          chunk_index: number;
+          content: string;
+          token_estimate?: number;
+          metadata?: Json;
+          embedding?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          content?: string;
+          metadata?: Json;
+          embedding?: string | null;
+        };
+        Relationships: [];
+      };
+      threat_findings: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          file_id: string | null;
+          title: string;
+          threat_type: string;
+          severity_score: number;
+          confidence: number;
+          explanation: string;
+          remediation: Json;
+          indicators: Json;
+          mitre_techniques: Json;
+          evidence_chunk_ids: string[];
+          status: FindingStatus;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          file_id?: string | null;
+          title: string;
+          threat_type: string;
+          severity_score: number;
+          confidence?: number;
+          explanation: string;
+          remediation?: Json;
+          indicators?: Json;
+          mitre_techniques?: Json;
+          evidence_chunk_ids?: string[];
+          status?: FindingStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          status?: FindingStatus;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      match_log_chunks: {
+        Args: {
+          query_embedding: string;
+          filter_workspace: string;
+          match_count?: number;
+          similarity_threshold?: number;
+          filter_file?: string | null;
+        };
+        Returns: {
+          id: string;
+          file_id: string;
+          chunk_index: number;
+          content: string;
+          metadata: Json;
+          similarity: number;
+        }[];
+      };
+      workspace_ingest_usage: {
+        Args: { target: string };
+        Returns: {
+          files_total: number;
+          bytes_total: number;
+          files_last_24h: number;
+          bytes_last_24h: number;
+        }[];
+      };
+    };
     Enums: {
       global_role: GlobalRole;
       workspace_role: WorkspaceRole;
       workspace_plan: WorkspacePlan;
       subscription_status: SubscriptionStatus;
+      log_format: LogFormat;
+      ingest_status: IngestStatus;
+      finding_status: FindingStatus;
     };
     CompositeTypes: { [_ in never]: never };
   };
@@ -204,3 +375,8 @@ export interface GuardAIClaims {
   workspace_role?: WorkspaceRole | null;
   is_suspended?: boolean;
 }
+
+export type LogFile = Database["public"]["Tables"]["log_files"]["Row"];
+export type LogChunk = Database["public"]["Tables"]["log_chunks"]["Row"];
+export type ThreatFinding =
+  Database["public"]["Tables"]["threat_findings"]["Row"];

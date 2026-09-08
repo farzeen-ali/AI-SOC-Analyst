@@ -15,7 +15,9 @@ import {
 
 import { AuroraBackground } from "@/components/brand/aurora-background";
 import { ConsolePreview } from "@/components/marketing/console-preview";
-import { ScrollReveal } from "@/components/marketing/scroll-reveal";
+import { ScrollProgress } from "@/components/motion/scroll-progress";
+import { SpotlightCard } from "@/components/motion/spotlight-card";
+import { Reveal } from "@/components/motion/reveal";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { Button } from "@/components/ui/button";
@@ -88,6 +90,7 @@ const SECURITY_CONTROLS = [
 export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
+      <ScrollProgress />
       <SiteHeader />
 
       {/* ---------------- Hero ---------------- */}
@@ -95,20 +98,20 @@ export default function HomePage() {
         <AuroraBackground />
 
         <div className="mx-auto grid w-full max-w-6xl items-center gap-12 lg:grid-cols-[1fr_1.05fr] lg:gap-16">
-          <ScrollReveal className="space-y-7">
+          <Reveal className="space-y-7">
             <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1.5 font-mono text-[0.65rem] tracking-[0.14em] text-muted-foreground uppercase backdrop-blur">
               <span className="relative flex size-1.5">
                 <span className="absolute inline-flex size-full animate-pulse-ring rounded-full bg-primary" />
                 <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
               </span>
-              Phase 1 live · Auth, RBAC &amp; tenant isolation
+              Live · Ingestion, pgvector RAG &amp; tenant isolation
             </span>
 
             <h1 className="font-heading text-[2.5rem] leading-[1.06] font-semibold tracking-tight sm:text-[3.25rem] lg:text-[3.6rem]">
               The SOC analyst
               <br />
               that never{" "}
-              <span className="text-gradient">clears the queue</span>
+              <span className="text-gradient-animated">clears the queue</span>
               <br />
               by ignoring it.
             </h1>
@@ -145,11 +148,11 @@ export default function HomePage() {
             <p className="font-mono text-[0.7rem] text-muted-foreground">
               Free tier · No credit card · Workspace provisioned instantly
             </p>
-          </ScrollReveal>
+          </Reveal>
 
-          <ScrollReveal index={1}>
+          <Reveal index={1}>
             <ConsolePreview />
-          </ScrollReveal>
+          </Reveal>
         </div>
       </section>
 
@@ -157,7 +160,7 @@ export default function HomePage() {
       <section className="border-y border-border/60 bg-card/30">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-2 divide-x divide-y divide-border/60 sm:grid-cols-4 sm:divide-y-0">
           {METRICS.map((metric, index) => (
-            <ScrollReveal key={metric.label} index={index}>
+            <Reveal key={metric.label} index={index}>
               <div className="px-6 py-8 text-center">
                 <p className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
                   {metric.value}
@@ -166,7 +169,7 @@ export default function HomePage() {
                   {metric.label}
                 </p>
               </div>
-            </ScrollReveal>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -174,7 +177,7 @@ export default function HomePage() {
       {/* ---------------- Capabilities ---------------- */}
       <section id="platform" className="relative px-6 py-24 sm:py-28">
         <div className="mx-auto w-full max-w-6xl space-y-14">
-          <ScrollReveal className="mx-auto max-w-2xl space-y-4 text-center">
+          <Reveal className="mx-auto max-w-2xl space-y-4 text-center">
             <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1 font-mono text-[0.6rem] tracking-[0.16em] text-muted-foreground uppercase">
               The platform
             </span>
@@ -186,21 +189,21 @@ export default function HomePage() {
               on later. They are the substrate every GuardAI feature is written
               on top of.
             </p>
-          </ScrollReveal>
+          </Reveal>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {CAPABILITIES.map((capability, index) => {
               const Icon = capability.icon;
               return (
-                <ScrollReveal key={capability.title} index={index}>
-                  <article className="group relative h-full overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-5 backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5">
+                <Reveal key={capability.title} index={index}>
+                  <SpotlightCard className="h-full p-5">
                     <div
                       aria-hidden="true"
-                      className="pointer-events-none absolute -top-20 -right-20 size-40 rounded-full bg-primary/10 opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100"
+                      className="pointer-events-none absolute -top-20 -right-20 size-40 rounded-full bg-primary/10 opacity-0 blur-3xl transition-opacity duration-500 group-hover/spotlight:opacity-100"
                     />
 
                     <div className="relative space-y-3">
-                      <span className="flex size-10 items-center justify-center rounded-xl border border-border/60 bg-muted/40 transition-colors group-hover:border-primary/25 group-hover:bg-primary/10">
+                      <span className="flex size-10 items-center justify-center rounded-xl border border-border/60 bg-muted/40 transition-colors group-hover/spotlight:border-primary/25 group-hover/spotlight:bg-primary/10">
                         <Icon className="size-4.5 text-primary" />
                       </span>
                       <h3 className="font-heading text-base font-semibold">
@@ -210,8 +213,8 @@ export default function HomePage() {
                         {capability.body}
                       </p>
                     </div>
-                  </article>
-                </ScrollReveal>
+                  </SpotlightCard>
+                </Reveal>
               );
             })}
           </div>
@@ -229,18 +232,18 @@ export default function HomePage() {
         />
 
         <div className="relative mx-auto w-full max-w-6xl space-y-14">
-          <ScrollReveal className="mx-auto max-w-2xl space-y-4 text-center">
+          <Reveal className="mx-auto max-w-2xl space-y-4 text-center">
             <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 font-mono text-[0.6rem] tracking-[0.16em] text-muted-foreground uppercase">
               How it works
             </span>
             <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
               Three steps from raw logs to resolved incidents
             </h2>
-          </ScrollReveal>
+          </Reveal>
 
           <div className="grid gap-4 md:grid-cols-3">
             {STEPS.map((step, index) => (
-              <ScrollReveal key={step.step} index={index}>
+              <Reveal key={step.step} index={index}>
                 <div className="relative h-full rounded-2xl border border-border/60 bg-background/60 p-6 backdrop-blur-xl">
                   <span className="font-mono text-4xl font-semibold text-primary/20">
                     {step.step}
@@ -252,7 +255,7 @@ export default function HomePage() {
                     {step.body}
                   </p>
                 </div>
-              </ScrollReveal>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -261,7 +264,7 @@ export default function HomePage() {
       {/* ---------------- Security ---------------- */}
       <section className="px-6 py-24 sm:py-28">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-12 lg:grid-cols-2 lg:gap-16">
-          <ScrollReveal className="space-y-5">
+          <Reveal className="space-y-5">
             <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1 font-mono text-[0.6rem] tracking-[0.16em] text-muted-foreground uppercase">
               Tenant isolation
             </span>
@@ -304,9 +307,9 @@ export default function HomePage() {
               Read the security overview
               <ArrowRightIcon className="size-4" />
             </Button>
-          </ScrollReveal>
+          </Reveal>
 
-          <ScrollReveal index={1}>
+          <Reveal index={1}>
             <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/70 p-5 font-mono text-xs backdrop-blur-xl">
               <div
                 aria-hidden="true"
@@ -328,13 +331,13 @@ export default function HomePage() {
   );`}</code>
               </pre>
             </div>
-          </ScrollReveal>
+          </Reveal>
         </div>
       </section>
 
       {/* ---------------- CTA ---------------- */}
       <section className="px-6 pb-24">
-        <ScrollReveal className="mx-auto w-full max-w-5xl">
+        <Reveal className="mx-auto w-full max-w-5xl">
           <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card/80 via-card/60 to-primary/10 px-6 py-14 text-center backdrop-blur-xl sm:px-12">
             <div
               aria-hidden="true"
@@ -371,7 +374,7 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-        </ScrollReveal>
+        </Reveal>
       </section>
 
       <SiteFooter />

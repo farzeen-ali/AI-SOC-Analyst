@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/dashboard/page-header";
-import { Reveal } from "@/components/dashboard/reveal";
+import { Reveal } from "@/components/motion/reveal";
 import { listAuditLogs } from "@/lib/admin/queries";
 import { cn } from "@/lib/utils";
 

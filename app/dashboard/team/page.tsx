@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CrownIcon, MailPlusIcon, ShieldIcon, UsersIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/page-header";
-import { Reveal } from "@/components/dashboard/reveal";
+import { Reveal } from "@/components/motion/reveal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { requireTenantAdmin } from "@/lib/auth/dal";

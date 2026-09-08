@@ -41,6 +41,13 @@ export const env = {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
   },
+  /** Server-only. Powers embeddings and the RAG threat analysis. */
+  get openaiApiKey() {
+    return required("OPENAI_API_KEY", process.env.OPENAI_API_KEY);
+  },
+  get qstashToken() {
+    return required("QSTASH_TOKEN", process.env.QSTASH_TOKEN);
+  },
   get siteUrl() {
     return (
       process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
@@ -65,5 +72,14 @@ export const hasSupabase = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
+
+/** True when QStash is configured and background jobs can be published. */
+export const hasQStash = Boolean(
+  process.env.QSTASH_TOKEN &&
+    process.env.QSTASH_CURRENT_SIGNING_KEY &&
+    process.env.QSTASH_NEXT_SIGNING_KEY
+);
+
+export const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
 
 export const isProduction = process.env.NODE_ENV === "production";

@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
-import { Reveal } from "@/components/dashboard/reveal";
+import { Reveal } from "@/components/motion/reveal";
 
 interface PhasePlaceholderProps {
   icon: LucideIcon;

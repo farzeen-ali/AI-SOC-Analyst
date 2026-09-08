@@ -1,6 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 
-import { Reveal } from "@/components/dashboard/reveal";
+import { CountUp } from "@/components/motion/count-up";
+import { Reveal } from "@/components/motion/reveal";
+import { SpotlightCard } from "@/components/motion/spotlight-card";
 import { cn } from "@/lib/utils";
 
 interface StatCardProps {
@@ -12,11 +14,18 @@ interface StatCardProps {
   tone?: "default" | "primary" | "success" | "warning";
 }
 
-const TONES = {
+const ICON_TONES = {
   default: "text-muted-foreground",
   primary: "text-primary",
   success: "text-success",
   warning: "text-warning",
+} as const;
+
+const GLOW_TONES = {
+  default: "bg-foreground/[0.06]",
+  primary: "bg-primary/15",
+  success: "bg-success/15",
+  warning: "bg-warning/15",
 } as const;
 
 export function StatCard({
@@ -27,13 +36,18 @@ export function StatCard({
   index = 0,
   tone = "default",
 }: StatCardProps) {
+  // Numeric stats count up; pre-formatted strings (plan names, dates) do not.
+  const numeric = typeof value === "number" ? value : null;
+
   return (
     <Reveal index={index}>
-      <div className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/70 p-4 backdrop-blur-xl transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
-        {/* Corner glow that warms on hover. */}
+      <SpotlightCard className="h-full p-4">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -top-16 -right-16 size-32 rounded-full bg-primary/10 opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
+          className={cn(
+            "pointer-events-none absolute -top-16 -right-16 size-32 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover/spotlight:opacity-100",
+            GLOW_TONES[tone]
+          )}
         />
 
         <div className="relative flex items-start justify-between gap-3">
@@ -41,21 +55,23 @@ export function StatCard({
             <p className="font-mono text-[0.6rem] tracking-[0.14em] text-muted-foreground uppercase">
               {label}
             </p>
-            <p className="mt-2 truncate font-heading text-2xl font-semibold tracking-tight">
-              {value}
+
+            <p className="mt-2 truncate font-heading text-[1.65rem] leading-none font-semibold tracking-tight tabular-nums">
+              {numeric !== null ? <CountUp value={numeric} /> : value}
             </p>
+
             {hint && (
-              <p className="mt-1 truncate text-xs text-muted-foreground">
+              <p className="mt-1.5 truncate text-xs text-muted-foreground">
                 {hint}
               </p>
             )}
           </div>
 
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-muted/40">
-            <Icon className={cn("size-4", TONES[tone])} />
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-muted/40 transition-colors duration-300 group-hover/spotlight:border-primary/30 group-hover/spotlight:bg-primary/10">
+            <Icon className={cn("size-4", ICON_TONES[tone])} />
           </span>
         </div>
-      </div>
+      </SpotlightCard>
     </Reveal>
   );
 }

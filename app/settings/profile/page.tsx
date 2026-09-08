@@ -9,7 +9,7 @@ import {
 
 import { PageHeader } from "@/components/dashboard/page-header";
 import { LogoutForm } from "@/components/dashboard/logout-form";
-import { Reveal } from "@/components/dashboard/reveal";
+import { Reveal } from "@/components/motion/reveal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { requireAuth, toUserDTO } from "@/lib/auth/dal";

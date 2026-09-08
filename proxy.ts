@@ -130,7 +130,11 @@ export const config = {
     /*
      * Everything except Next internals and static assets. Auth guards should
      * see as much of the surface as possible, but must not block CSS or images.
+     *
+     * `api/jobs` is excluded deliberately: those are queue callbacks with no
+     * session cookie, authenticated by Upstash signature inside the route.
+     * Running the session refresh on them would be pure overhead.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff|woff2|ttf)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/jobs|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff|woff2|ttf)$).*)",
   ],
 };

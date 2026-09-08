@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/page-header";
-import { Reveal } from "@/components/dashboard/reveal";
+import { Reveal } from "@/components/motion/reveal";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
 import { requireAuth, toUserDTO } from "@/lib/auth/dal";
@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Overview" };
 
-/** Live protections shipped in Phase 1, surfaced so the posture is auditable. */
+/** Live protections, surfaced so the posture is auditable at a glance. */
 const SECURITY_BASELINE = [
   "PostgreSQL Row Level Security on every table",
   "Custom JWT claims carrying workspace_id and role",
@@ -30,6 +30,8 @@ const SECURITY_BASELINE = [
   "Per-IP and per-identity rate limiting via Upstash Redis",
   "Zod schema validation on both client and server",
   "HTTP-only, SameSite session cookies",
+  "PII masked before logs are embedded or sent to an LLM",
+  "Vector search scoped to workspace_id by RLS",
 ];
 
 const DENIAL_MESSAGES: Record<string, string> = {
@@ -214,21 +216,20 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         <section className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-gradient-to-br from-card/70 to-primary/5 p-5 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-heading text-base font-semibold">
-              Phase 2 — Log ingestion &amp; RAG threat analysis
+              Ingest your first log file
             </h2>
             <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Authentication, RBAC, and tenant isolation are live. Next up:
-              streaming log ingestion, retrieval-augmented detection, and
-              automated remediation playbooks.
+              Drop a JSON, CSV, syslog, or plain log file and GuardAI parses it,
+              masks the PII, embeds it into pgvector, and posts ranked findings
+              with remediation already drafted.
             </p>
           </div>
           <Button
-            variant="outline"
             className="h-9 shrink-0 rounded-xl"
             nativeButton={false}
-            render={<Link href="/settings/profile" />}
+            render={<Link href="/dashboard/logs" />}
           >
-            Review your account
+            Ingest logs
             <ArrowRightIcon className="size-4" />
           </Button>
         </section>

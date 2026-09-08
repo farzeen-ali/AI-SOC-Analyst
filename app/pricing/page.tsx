@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRightIcon, CheckIcon, SparklesIcon } from "lucide-react";
 
 import { AuroraBackground } from "@/components/brand/aurora-background";
-import { ScrollReveal } from "@/components/marketing/scroll-reveal";
+import { Reveal } from "@/components/motion/reveal";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,7 @@ export default function PricingPage() {
       <section className="relative px-6 pt-32 pb-16 sm:pt-40">
         <AuroraBackground subtle />
 
-        <ScrollReveal className="mx-auto max-w-2xl space-y-5 text-center">
+        <Reveal className="mx-auto max-w-2xl space-y-5 text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1.5 font-mono text-[0.65rem] tracking-[0.14em] text-muted-foreground uppercase backdrop-blur">
             Pricing
           </span>
@@ -71,13 +71,13 @@ export default function PricingPage() {
             2 — until then, Pro features are described here so you can plan
             around them.
           </p>
-        </ScrollReveal>
+        </Reveal>
       </section>
 
       <section className="px-6 pb-24">
         <div className="mx-auto grid w-full max-w-4xl gap-5 md:grid-cols-2">
           {PLANS.map((plan, index) => (
-            <ScrollReveal key={plan.name} index={index}>
+            <Reveal key={plan.name} index={index}>
               <article
                 className={cn(
                   "relative flex h-full flex-col overflow-hidden rounded-2xl border p-6 backdrop-blur-xl",
@@ -136,16 +136,16 @@ export default function PricingPage() {
                   <ArrowRightIcon className="size-4" />
                 </Button>
               </article>
-            </ScrollReveal>
+            </Reveal>
           ))}
         </div>
 
-        <ScrollReveal index={2} className="mx-auto mt-6 max-w-4xl">
+        <Reveal index={2} className="mx-auto mt-6 max-w-4xl">
           <p className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-center text-xs leading-relaxed text-muted-foreground">
             Super Admin accounts are exempt from plan limits by design — the
             platform owner is never blocked by a tenant&apos;s subscription tier.
           </p>
-        </ScrollReveal>
+        </Reveal>
       </section>
 
       <SiteFooter />

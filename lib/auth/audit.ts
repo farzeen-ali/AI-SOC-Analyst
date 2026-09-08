@@ -18,7 +18,12 @@ export type AuditAction =
   | "admin.workspace_suspended"
   | "admin.workspace_reinstated"
   | "admin.user_suspended"
-  | "admin.user_reinstated";
+  | "admin.user_reinstated"
+  | "ingest.upload_requested"
+  | "ingest.upload_committed"
+  | "ingest.rejected"
+  | "ingest.file_deleted"
+  | "finding.status_changed";
 
 export interface AuditEntry {
   action: AuditAction;

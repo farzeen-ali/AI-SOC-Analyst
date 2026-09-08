@@ -3,7 +3,7 @@ import { KeyRoundIcon, SlidersHorizontalIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PhasePlaceholder } from "@/components/dashboard/phase-placeholder";
-import { Reveal } from "@/components/dashboard/reveal";
+import { Reveal } from "@/components/motion/reveal";
 import { requireTenantAdmin } from "@/lib/auth/dal";
 
 export const metadata: Metadata = { title: "Workspace Settings" };

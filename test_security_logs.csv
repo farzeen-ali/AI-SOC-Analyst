@@ -1,0 +1,5 @@
+timestamp,source_ip,destination_ip,event_type,severity,user,action,details
+2026-09-08T10:15:30Z,192.168.1.105,10.0.0.1,AUTH_FAILED,HIGH,admin,LOGIN_ATTEMPT,5 consecutive failed SSH password attempts from external IP
+2026-09-08T10:16:01Z,192.168.1.105,10.0.0.1,AUTH_SUCCESS,CRITICAL,admin,LOGIN_SUCCESS,Successful SSH login after multiple failures
+2026-09-08T10:17:12Z,192.168.1.105,10.0.0.1,PRIVILEGE_ESCALATION,CRITICAL,admin,SUDO_EXEC,Executed sudo su - root without two-factor prompt
+2026-09-08T10:18:45Z,192.168.1.105,10.0.0.5,DATA_EXFILTRATION,HIGH,root,DB_DUMP,Large outbound file transfer (4.2GB) via SCP to unknown IP 185.220.101.5
