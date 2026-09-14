@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { CrownIcon, MailPlusIcon, ShieldIcon, UsersIcon } from "lucide-react";
+import { CrownIcon, ShieldIcon, UsersIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Reveal } from "@/components/motion/reveal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { InviteModal } from "@/components/team/invite-modal";
 import { requireTenantAdmin } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -61,10 +61,7 @@ export default async function TeamPage() {
         title="Team"
         description={`Analysts with access to ${context.workspace?.name ?? "this workspace"}. Only Tenant Admins can see or change this list.`}
         action={
-          <Button className="h-9 rounded-xl" disabled>
-            <MailPlusIcon className="size-4" />
-            Invite analyst
-          </Button>
+          <InviteModal seatsUsed={members.length} seats={seats} />
         }
       />
 
@@ -79,7 +76,7 @@ export default async function TeamPage() {
             </span>
           </p>
           <span className="ml-auto rounded-md border border-border/60 bg-muted/50 px-2 py-0.5 font-mono text-[0.6rem] tracking-wide text-muted-foreground uppercase">
-            Invitations ship in Phase 2
+            Tenant Admin only
           </span>
         </div>
       </Reveal>

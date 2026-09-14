@@ -1,38 +1,44 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import {
-  ArrowRightIcon,
-  BuildingIcon,
-  CheckIcon,
-  CreditCardIcon,
+  ActivityIcon,
+  CrosshairIcon,
+  FlameIcon,
   LockIcon,
-  ShieldCheckIcon,
-  UserCogIcon,
-  UsersIcon,
+  ShieldAlertIcon,
+  UploadCloudIcon,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/page-header";
-import { Reveal } from "@/components/motion/reveal";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { Reveal } from "@/components/motion/reveal";
+import { SpotlightCard } from "@/components/motion/spotlight-card";
+import { AiInvestigator } from "@/components/soc/ai-investigator";
+import {
+  AttackVectorChart,
+  SeverityDistribution,
+} from "@/components/soc/attack-vector-chart";
+import { CriticalRiskGauge } from "@/components/soc/critical-risk-gauge";
+import { LiveLogStream } from "@/components/soc/live-log-stream";
+import { RemediationChecklist } from "@/components/soc/remediation-checklist";
+import {
+  PlatformManagementBanner,
+  UpgradePanel,
+} from "@/components/soc/role-panels";
+import { InviteModal } from "@/components/team/invite-modal";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { requireAuth, toUserDTO } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import {
+  getRecentSocEvents,
+  getSocAnalytics,
+  listRemediationSteps,
+} from "@/lib/soc/queries";
 import { roleLabel, roleSummary } from "@/lib/roles";
-import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Overview" };
-
-/** Live protections, surfaced so the posture is auditable at a glance. */
-const SECURITY_BASELINE = [
-  "PostgreSQL Row Level Security on every table",
-  "Custom JWT claims carrying workspace_id and role",
-  "Brute-force lockout after 5 failed attempts (15 min)",
-  "Per-IP and per-identity rate limiting via Upstash Redis",
-  "Zod schema validation on both client and server",
-  "HTTP-only, SameSite session cookies",
-  "PII masked before logs are embedded or sent to an LLM",
-  "Vector search scoped to workspace_id by RLS",
-];
+export const metadata: Metadata = { title: "SOC Intelligence Center" };
 
 const DENIAL_MESSAGES: Record<string, string> = {
   "tenant-admin":
@@ -40,6 +46,17 @@ const DENIAL_MESSAGES: Record<string, string> = {
   "super-admin": "The platform console is limited to Super Admin accounts.",
 };
 
+/**
+ * SOC Intelligence Center.
+ *
+ * Composed of independently-suspended panels so the shell and the fast
+ * analytics paint immediately while the slower live stream and remediation
+ * queries stream in behind their own skeletons — no layout shift, no blank
+ * screen.
+ *
+ * Role-based rendering happens here on the server: a Member's response simply
+ * does not contain the billing, upgrade, or team markup.
+ */
 export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const [context, searchParams] = await Promise.all([
     requireAuth(),
@@ -51,18 +68,8 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
     ? searchParams.denied[0]
     : searchParams.denied;
 
-  // Scoped by RLS to this workspace — no explicit tenant filter needed, but we
-  // pass one anyway so the query is correct even if a policy is later relaxed.
-  const supabase = await createClient();
-  const { count: memberCount } = context.workspace
-    ? await supabase
-        .from("workspace_members")
-        .select("user_id", { count: "exact", head: true })
-        .eq("workspace_id", context.workspace.id)
-    : { count: 0 };
-
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-8">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       {denied && DENIAL_MESSAGES[denied] && (
         <Reveal>
           <div
@@ -75,202 +82,215 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         </Reveal>
       )}
 
+      {/* Super Admin only. */}
+      <PlatformManagementBanner user={user} />
+
       <PageHeader
         eyebrow={`Signed in as ${roleLabel(user)}`}
-        title={`Welcome back, ${user.fullName.split(" ")[0]}`}
+        title="SOC Intelligence Center"
         description={roleSummary(user)}
         action={
-          user.isTenantAdmin ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Tenant Admin only — Members get neither control. */}
+            {user.isTenantAdmin && (
+              <Suspense fallback={<Skeleton className="h-9 w-32 rounded-xl" />}>
+                <InviteControl workspaceId={context.workspace?.id ?? null} />
+              </Suspense>
+            )}
             <Button
               className="h-9 rounded-xl"
               nativeButton={false}
-              render={<Link href="/dashboard/team" />}
+              render={<Link href="/dashboard/logs" />}
             >
-              <UsersIcon className="size-4" />
-              Manage team
+              <UploadCloudIcon className="size-4" />
+              Ingest logs
             </Button>
-          ) : null
+          </div>
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          index={0}
-          label="Workspace"
-          value={user.workspaceName ?? "—"}
-          hint={context.workspace ? `/${context.workspace.slug}` : "Unassigned"}
-          icon={BuildingIcon}
-          tone="primary"
-        />
-        <StatCard
-          index={1}
-          label="Your role"
-          value={roleLabel(user)}
-          hint={user.isSuperAdmin ? "Plan limits waived" : "Scoped to this tenant"}
-          icon={ShieldCheckIcon}
-          tone="success"
-        />
-        <StatCard
-          index={2}
-          label="Team members"
-          value={memberCount ?? 0}
-          hint={
-            context.workspace
-              ? `${context.workspace.seats} seat${context.workspace.seats === 1 ? "" : "s"} allocated`
-              : undefined
-          }
-          icon={UsersIcon}
-        />
-        <StatCard
-          index={3}
-          label="Plan"
-          value={(user.workspacePlan ?? "free").toUpperCase()}
-          hint={context.workspace?.subscription_status ?? undefined}
-          icon={CreditCardIcon}
-          tone={user.workspacePlan === "pro" ? "success" : "warning"}
-        />
-      </div>
+      <Suspense fallback={<AnalyticsSkeleton />}>
+        <AnalyticsSection workspaceId={context.workspace?.id ?? null} />
+      </Suspense>
 
-      <div className="grid gap-4 lg:grid-cols-5">
-        {/* -------- Security baseline -------- */}
-        <Reveal index={4} className="lg:col-span-3">
-          <section className="relative h-full overflow-hidden rounded-2xl border border-border/60 bg-card/70 p-5 backdrop-blur-xl">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -top-24 -right-20 size-56 rounded-full bg-primary/10 blur-3xl"
-            />
+      {/* Tenant Admin only. */}
+      <UpgradePanel user={user} />
 
-            <div className="relative">
-              <div className="flex items-center gap-2">
-                <span className="flex size-8 items-center justify-center rounded-lg border border-primary/25 bg-primary/10">
-                  <ShieldCheckIcon className="size-4 text-primary" />
-                </span>
-                <div>
-                  <h2 className="font-heading text-base font-semibold">
-                    Security baseline
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    Controls active on every request in this workspace
-                  </p>
-                </div>
-              </div>
-
-              <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-                {SECURITY_BASELINE.map((control) => (
-                  <li
-                    key={control}
-                    className="flex items-start gap-2 rounded-lg border border-border/50 bg-background/40 px-2.5 py-2 text-xs leading-relaxed"
-                  >
-                    <CheckIcon className="mt-0.5 size-3 shrink-0 text-success" />
-                    <span className="text-muted-foreground">{control}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Reveal className="min-h-[26rem]">
+          <SpotlightCard className="flex h-full flex-col p-0" inert>
+            <Suspense fallback={<PanelSkeleton label="Live stream" />}>
+              <LiveStreamSection />
+            </Suspense>
+          </SpotlightCard>
         </Reveal>
 
-        {/* -------- Permission matrix -------- */}
-        <Reveal index={5} className="lg:col-span-2">
-          <section className="h-full rounded-2xl border border-border/60 bg-card/70 p-5 backdrop-blur-xl">
-            <h2 className="font-heading text-base font-semibold">
-              What your role unlocks
-            </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Enforced by RLS policies and route guards, not just the UI.
-            </p>
-
-            <ul className="mt-4 space-y-2">
-              <PermissionRow
-                label="Log upload & threat dashboard"
-                granted
-                icon={ShieldCheckIcon}
-              />
-              <PermissionRow
-                label="Profile, password & MFA"
-                granted
-                icon={UserCogIcon}
-              />
-              <PermissionRow
-                label="Team invitations & roles"
-                granted={user.isTenantAdmin}
-                icon={UsersIcon}
-              />
-              <PermissionRow
-                label="Billing & subscription"
-                granted={user.isTenantAdmin}
-                icon={CreditCardIcon}
-              />
-              <PermissionRow
-                label="All tenants & platform metrics"
-                granted={user.isSuperAdmin}
-                icon={BuildingIcon}
-              />
-            </ul>
-          </section>
+        <Reveal index={1} className="min-h-[26rem]">
+          <SpotlightCard className="flex h-full flex-col p-0" inert>
+            <AiInvestigator />
+          </SpotlightCard>
         </Reveal>
       </div>
 
-      {/* -------- Next phase -------- */}
-      <Reveal index={6}>
-        <section className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-gradient-to-br from-card/70 to-primary/5 p-5 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="font-heading text-base font-semibold">
-              Ingest your first log file
-            </h2>
-            <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Drop a JSON, CSV, syslog, or plain log file and GuardAI parses it,
-              masks the PII, embeds it into pgvector, and posts ranked findings
-              with remediation already drafted.
-            </p>
-          </div>
-          <Button
-            className="h-9 shrink-0 rounded-xl"
-            nativeButton={false}
-            render={<Link href="/dashboard/logs" />}
-          >
-            Ingest logs
-            <ArrowRightIcon className="size-4" />
-          </Button>
-        </section>
+      <Reveal index={2}>
+        <SpotlightCard className="flex max-h-[30rem] flex-col p-0" inert>
+          <Suspense fallback={<PanelSkeleton label="Remediation" />}>
+            <RemediationSection />
+          </Suspense>
+        </SpotlightCard>
       </Reveal>
     </div>
   );
 }
 
-function PermissionRow({
-  label,
-  granted,
-  icon: Icon,
-}: {
-  label: string;
-  granted: boolean;
-  icon: typeof ShieldCheckIcon;
-}) {
+/* ------------------------------------------------------------------ *
+ *  Streamed sections
+ * ------------------------------------------------------------------ */
+
+async function AnalyticsSection({ workspaceId }: { workspaceId: string | null }) {
+  const analytics = await getSocAnalytics(workspaceId);
+
   return (
-    <li
-      className={cn(
-        "flex items-center gap-2.5 rounded-lg border px-2.5 py-2 text-xs",
-        granted
-          ? "border-success/25 bg-success/5 text-foreground"
-          : "border-border/50 bg-muted/20 text-muted-foreground"
-      )}
-    >
-      <Icon
-        className={cn(
-          "size-3.5 shrink-0",
-          granted ? "text-success" : "text-muted-foreground/60"
-        )}
-      />
-      <span className="flex-1">{label}</span>
-      <span
-        className={cn(
-          "font-mono text-[0.55rem] tracking-wide uppercase",
-          granted ? "text-success" : "text-muted-foreground/60"
-        )}
-      >
-        {granted ? "Allowed" : "Denied"}
-      </span>
-    </li>
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          index={0}
+          label="Threats detected"
+          value={analytics.totalFindings}
+          hint={`${analytics.openFindings} still open`}
+          icon={ShieldAlertIcon}
+          tone="primary"
+        />
+        <StatCard
+          index={1}
+          label="Critical"
+          value={analytics.criticalFindings}
+          hint="Severity 9–10"
+          icon={FlameIcon}
+          tone={analytics.criticalFindings > 0 ? "warning" : "success"}
+        />
+        <StatCard
+          index={2}
+          label="Mean severity"
+          value={analytics.meanSeverity || 0}
+          hint="Across all findings"
+          icon={ActivityIcon}
+        />
+        <StatCard
+          index={3}
+          label="Steps resolved"
+          value={analytics.steps.resolved}
+          hint={`${analytics.steps.pending + analytics.steps.in_progress} outstanding`}
+          icon={CrosshairIcon}
+          tone="success"
+        />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-5">
+        <Reveal index={4} className="lg:col-span-2">
+          <SpotlightCard className="h-full p-4">
+            <p className="font-mono text-[0.6rem] tracking-[0.16em] text-muted-foreground uppercase">
+              Critical risk
+            </p>
+            <CriticalRiskGauge
+              score={analytics.maxOpenSeverity}
+              openFindings={analytics.openFindings}
+              className="mt-2"
+            />
+            <SeverityDistribution
+              bySeverity={analytics.bySeverity}
+              className="mt-4"
+            />
+          </SpotlightCard>
+        </Reveal>
+
+        <Reveal index={5} className="lg:col-span-3">
+          <SpotlightCard className="h-full p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-mono text-[0.6rem] tracking-[0.16em] text-muted-foreground uppercase">
+                Attack vectors
+              </p>
+              <Link
+                href="/dashboard/threats"
+                className="font-mono text-[0.6rem] text-primary underline-offset-4 hover:underline"
+              >
+                View all
+              </Link>
+            </div>
+            <AttackVectorChart vectors={analytics.vectors} className="mt-3" />
+          </SpotlightCard>
+        </Reveal>
+      </div>
+    </div>
+  );
+}
+
+async function LiveStreamSection() {
+  const events = await getRecentSocEvents(40);
+  return <LiveLogStream initialEvents={events} />;
+}
+
+async function RemediationSection() {
+  const steps = await listRemediationSteps(40);
+  return <RemediationChecklist steps={steps} />;
+}
+
+/** Seat usage for the invite dialog. Scoped by RLS to this workspace. */
+async function InviteControl({ workspaceId }: { workspaceId: string | null }) {
+  if (!workspaceId) return null;
+
+  const context = await requireAuth();
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("workspace_members")
+    .select("user_id", { count: "exact", head: true })
+    .eq("workspace_id", workspaceId);
+
+  return (
+    <InviteModal
+      seatsUsed={count ?? 0}
+      seats={context.workspace?.seats ?? 0}
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ *  Skeletons — sized to their real content so nothing shifts
+ * ------------------------------------------------------------------ */
+
+function AnalyticsSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }, (_, index) => (
+          <Skeleton key={index} className="h-[6.5rem] rounded-2xl" />
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-5">
+        <Skeleton className="h-[22rem] rounded-2xl lg:col-span-2" />
+        <Skeleton className="h-[22rem] rounded-2xl lg:col-span-3" />
+      </div>
+    </div>
+  );
+}
+
+function PanelSkeleton({ label }: { label: string }) {
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
+        <span className="font-mono text-[0.6rem] tracking-[0.16em] text-muted-foreground uppercase">
+          {label}
+        </span>
+      </div>
+      <div className="flex-1 space-y-2 p-4">
+        {Array.from({ length: 6 }, (_, index) => (
+          <Skeleton
+            key={index}
+            className="h-10 rounded-lg"
+            style={{ opacity: 1 - index * 0.12 }}
+          />
+        ))}
+      </div>
+    </div>
   );
 }

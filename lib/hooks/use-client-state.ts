@@ -40,3 +40,23 @@ export function usePrefersReducedMotion(): boolean {
     () => false
   );
 }
+
+function subscribeToVisibility(onChange: () => void) {
+  document.addEventListener("visibilitychange", onChange);
+  return () => document.removeEventListener("visibilitychange", onChange);
+}
+
+/**
+ * Whether the tab is currently visible.
+ *
+ * Read through `useSyncExternalStore` rather than a `useState` + effect pair,
+ * so visibility is derived during render and never needs a synchronous
+ * `setState` inside an effect body. Assumes visible on the server.
+ */
+export function useDocumentVisible(): boolean {
+  return useSyncExternalStore(
+    subscribeToVisibility,
+    () => !document.hidden,
+    () => true
+  );
+}

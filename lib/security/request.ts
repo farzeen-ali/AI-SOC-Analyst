@@ -70,3 +70,41 @@ export async function assertSameOrigin(): Promise<void> {
     throw new Error("Rejected request: cross-origin submission blocked.");
   }
 }
+
+/**
+ * Route Handler flavour of the origin check.
+ *
+ * `assertSameOrigin()` throws, which Server Actions surface correctly but a
+ * Route Handler turns into an unhandled 500 — a confusing status for what is
+ * a deliberate security rejection. This returns the refusal instead, so the
+ * caller can answer 403 and stop.
+ *
+ * Returns `null` when the request is same-origin and should proceed.
+ */
+export async function guardSameOrigin(): Promise<Response | null> {
+  const headerList = await headers();
+  const origin = headerList.get("origin");
+  const host = headerList.get("host");
+
+  // Same-origin navigations and server-to-server calls may omit Origin.
+  if (!origin) return null;
+
+  let originHost: string;
+  try {
+    originHost = new URL(origin).host;
+  } catch {
+    return Response.json(
+      { error: "Malformed Origin header." },
+      { status: 403 }
+    );
+  }
+
+  if (!host || originHost !== host) {
+    return Response.json(
+      { error: "Cross-origin request blocked." },
+      { status: 403 }
+    );
+  }
+
+  return null;
+}

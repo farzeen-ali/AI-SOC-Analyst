@@ -27,6 +27,9 @@ export const RATE_LIMITS = {
   mutation: { tokens: 30, window: "1 m", seconds: 60 },
   uploadPrepare: { tokens: 20, window: "10 m", seconds: 600 },
   uploadCommit: { tokens: 20, window: "10 m", seconds: 600 },
+  // LLM calls cost real money, so this is tighter than the CRUD limits.
+  aiInvestigate: { tokens: 12, window: "5 m", seconds: 300 },
+  eventStream: { tokens: 60, window: "5 m", seconds: 300 },
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

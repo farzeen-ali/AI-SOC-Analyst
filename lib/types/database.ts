@@ -19,6 +19,9 @@ export type IngestStatus =
   | "analyzing"
   | "completed"
   | "failed";
+/** Phase 3 — per-step remediation triage. */
+export type RemediationStatus = "pending" | "in_progress" | "resolved";
+
 export type FindingStatus =
   | "open"
   | "acknowledged"
@@ -314,6 +317,34 @@ export interface Database {
         };
         Relationships: [];
       };
+      finding_remediation_steps: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          finding_id: string;
+          step_index: number;
+          description: string;
+          status: RemediationStatus;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          finding_id: string;
+          step_index: number;
+          description: string;
+          status?: RemediationStatus;
+          updated_by?: string | null;
+        };
+        Update: {
+          // Everything else is pinned by guard_remediation_step_fields().
+          status?: RemediationStatus;
+          updated_by?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -334,6 +365,10 @@ export interface Database {
           similarity: number;
         }[];
       };
+      workspace_threat_analytics: {
+        Args: { target: string };
+        Returns: Json;
+      };
       workspace_ingest_usage: {
         Args: { target: string };
         Returns: {
@@ -352,6 +387,7 @@ export interface Database {
       log_format: LogFormat;
       ingest_status: IngestStatus;
       finding_status: FindingStatus;
+      remediation_status: RemediationStatus;
     };
     CompositeTypes: { [_ in never]: never };
   };
@@ -380,3 +416,6 @@ export type LogFile = Database["public"]["Tables"]["log_files"]["Row"];
 export type LogChunk = Database["public"]["Tables"]["log_chunks"]["Row"];
 export type ThreatFinding =
   Database["public"]["Tables"]["threat_findings"]["Row"];
+
+export type RemediationStep =
+  Database["public"]["Tables"]["finding_remediation_steps"]["Row"];

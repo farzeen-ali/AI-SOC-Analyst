@@ -14,7 +14,7 @@ import {
   checkRateLimit,
   formatRetryAfter,
 } from "@/lib/security/rate-limit";
-import { assertSameOrigin, getClientIp } from "@/lib/security/request";
+import { guardSameOrigin, getClientIp } from "@/lib/security/request";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -33,7 +33,8 @@ export const runtime = "nodejs";
  * the actual bytes.
  */
 export async function POST(request: NextRequest) {
-  await assertSameOrigin();
+  const originRefusal = await guardSameOrigin();
+  if (originRefusal) return originRefusal;
 
   const context = await getAuthContext();
   if (!context) {

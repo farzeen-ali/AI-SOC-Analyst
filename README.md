@@ -97,7 +97,7 @@ QStash, and the Vercel AI SDK on OpenAI.
   the system prompt states it is data, never instructions. Model output drives
   nothing but a row in `threat_findings`.
 
-### Phase 2 security notes
+## Phase 2 security notes
 | Control | Where |
 | --- | --- |
 | Signed upload tickets, server-generated paths | `app/api/ingest/prepare/route.ts` |
@@ -107,6 +107,61 @@ QStash, and the Vercel AI SDK on OpenAI.
 | Content sniffing, CSV formula injection, prototype pollution, ANSI escapes | `lib/ingest/parse.ts` |
 | Bounded events / lines / chunks per file | `lib/ingest/constants.ts` |
 | Findings immutable except `status` | `guard_finding_immutable_fields` trigger |
+
+## What Phase 3 delivers
+
+### SOC Intelligence Center (`/dashboard`)
+- **Analytics widgets** — total threats detected, an animated critical-risk
+  gauge driven by the highest *open* severity, an interactive attack-vector
+  breakdown, and a severity distribution bar.
+- **Real-time log stream** — Server-Sent Events tail of ingestion and finding
+  activity. The connection closes while the tab is hidden or paused, and gives
+  up with a Reconnect control on a fatal error rather than retrying forever.
+- **Streaming generative UI** — `streamObject` on the server and `useObject` on
+  the client share one Zod schema, so partial JSON renders progressively: the
+  severity badge appears the moment the verdict lands, then warning alerts,
+  then actionable remediation cards.
+- **Interactive remediation checklists** — every AI remediation step becomes a
+  row that moves through Pending / In Progress / Resolved, applied
+  optimistically and rolled back if the server rejects it.
+
+### Role-based rendering
+Resolved on the server from the RLS-verified auth context, so a Member's HTML
+never contains the restricted markup at all:
+
+| | Tenant Admin | Member | Super Admin |
+| --- | --- | --- | --- |
+| Log stream + reports | yes | yes | yes |
+| Remediation checklist | yes | yes | yes |
+| Upgrade panel | yes | **absent** | yes |
+| Team invite modal | yes | **absent** | yes |
+| Platform banner + admin portal link | no | no | yes |
+
+Hiding a control is presentation only — every route and action re-checks the
+role, and seat limits are enforced server-side in `inviteMemberAction`.
+
+### UX polish
+- `loading.tsx` skeletons on every dashboard route, sized to the real content
+  so the swap is a paint rather than a reflow.
+- Suspense boundaries inside `/dashboard` so analytics paint before the slower
+  live-stream and remediation queries resolve.
+- Page transitions via `template.tsx`, driven by a CSS keyframe rather than a
+  JS-gated `initial: { opacity: 0 }` — content can never be stranded invisible
+  if the main thread is busy, and `prefers-reduced-motion` disables it.
+
+### Security notes for this phase
+- Both new endpoints reject cross-origin requests with **403** before touching
+  auth, and unauthenticated requests with **401**.
+- The AI route treats *both* the log data and the analyst's question as
+  untrusted: they are fenced in the prompt, and the model's output is validated
+  against the Zod schema before it reaches the UI. Nothing it returns is ever
+  passed to `dangerouslySetInnerHTML`.
+- LLM calls have their own tighter rate limit (12 per 5 minutes per workspace
+  and IP) because they cost real money.
+- The SSE route resolves authorisation **once** through the RLS-scoped context
+  before streaming, then filters by the captured workspace id — `cookies()` is
+  request-scoped and must not be re-read after the response has begun.
+
 
 ---
 
@@ -151,6 +206,7 @@ order**, or apply them with the CLI. Both are idempotent — safe to re-run.
 | `0002_ingestion_vectors.sql` | pgvector, `log_files`, `log_chunks`, `threat_findings`, the similarity RPC, HNSW index, and the private `security-logs` storage bucket |
 | `0003_fix_ingestion_rls.sql` | Corrects the Phase 2 policies so membership authorises and the JWT claim only scopes, plus `debug_my_claims()` |
 | `0004_fix_vector_operator_search_path.sql` | Lets `match_log_chunks` resolve pgvector's `<=>` operator, plus `debug_vector_ops()` |
+| `0005_remediation_checklists.sql` | Per-step remediation triage, the materialising trigger, and `workspace_threat_analytics()` |
 
 > **If ingestion fails with "operator does not exist: vector <=> vector"**,
 > `0004` has not been applied. The `<=>` operator is resolved through the
@@ -289,7 +345,7 @@ supabase/migrations/ schema, triggers, JWT hook, pgvector, RLS policies
 - **Landing, pricing, and security pages** were added so the auth flows have a
   coherent product around them and no navigation link 404s.
 
-## Phase 3
+## What is next
 
-Remediation playbook execution, Lemon Squeezy billing, team invitations, MFA
-enrolment, and streaming SIEM connectors.
+Lemon Squeezy billing and checkout, MFA enrolment, workspace rename and scoped
+API keys, and streaming SIEM connectors.

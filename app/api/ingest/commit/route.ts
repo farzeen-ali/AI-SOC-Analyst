@@ -7,7 +7,7 @@ import { ABSOLUTE_MAX_BYTES, uploadLimitFor } from "@/lib/ingest/constants";
 import { commitUploadSchema } from "@/lib/ingest/validation";
 import { publishIngestJob, queueAvailable } from "@/lib/queue/qstash";
 import { checkRateLimit, formatRetryAfter } from "@/lib/security/rate-limit";
-import { assertSameOrigin, getClientIp } from "@/lib/security/request";
+import { guardSameOrigin, getClientIp } from "@/lib/security/request";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,7 +21,8 @@ export const runtime = "nodejs";
  * ticket and then push 100 MB through it.
  */
 export async function POST(request: NextRequest) {
-  await assertSameOrigin();
+  const originRefusal = await guardSameOrigin();
+  if (originRefusal) return originRefusal;
 
   const context = await getAuthContext();
   if (!context?.workspace) {

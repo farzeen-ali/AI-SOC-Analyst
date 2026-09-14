@@ -23,7 +23,9 @@ export type AuditAction =
   | "ingest.upload_committed"
   | "ingest.rejected"
   | "ingest.file_deleted"
-  | "finding.status_changed";
+  | "finding.status_changed"
+  | "team.member_invited"
+  | "ai.investigation";
 
 export interface AuditEntry {
   action: AuditAction;
