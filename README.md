@@ -207,6 +207,7 @@ order**, or apply them with the CLI. Both are idempotent — safe to re-run.
 | `0003_fix_ingestion_rls.sql` | Corrects the Phase 2 policies so membership authorises and the JWT claim only scopes, plus `debug_my_claims()` |
 | `0004_fix_vector_operator_search_path.sql` | Lets `match_log_chunks` resolve pgvector's `<=>` operator, plus `debug_vector_ops()` |
 | `0005_remediation_checklists.sql` | Per-step remediation triage, the materialising trigger, and `workspace_threat_analytics()` |
+| `0006_mfa_claims.sql` | Adds the `has_mfa` claim to the access-token hook so MFA gating is a pure claim check, plus `debug_my_mfa()` |
 
 > **If ingestion fails with "operator does not exist: vector <=> vector"**,
 > `0004` has not been applied. The `<=>` operator is resolved through the
@@ -252,7 +253,61 @@ select `public.custom_access_token_hook` and enable it.
 Without this step the JWT carries no `workspace_id`, and every RLS policy that
 scopes by workspace will correctly deny access.
 
-### 4. Switch the recovery email to a 6-digit code
+### 4. Point the confirmation email at `/auth/confirm`
+
+**Dashboard → Authentication → Email Templates → Confirm signup.** Replace the
+default `{{ .ConfirmationURL }}` link with:
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup">
+  Confirm your email
+</a>
+```
+
+This is what fixes the "Unable to sign in" dead end. `{{ .ConfirmationURL }}`
+routes through Supabase's verify endpoint and comes back as a PKCE `?code=`,
+which can only be exchanged in the *same browser* that signed up — so opening
+the email on a phone produced an error even though the address was confirmed.
+`{{ .TokenHash }}` is stateless and verifies anywhere.
+
+Both paths are handled either way: `/auth/callback` now treats a failed code
+exchange as "confirmed, please sign in" rather than an error, because Supabase
+has already verified the address by the time it redirects.
+
+### 5. Enable MFA
+
+Two factor types are supported, and **you only need one of them**.
+
+**Authenticator app (TOTP) — recommended, works on every plan.**
+**Dashboard → Authentication → Multi-Factor**, switch **TOTP (App Authenticator)**
+to Enabled. Nothing else is required. Users scan a QR code from
+**Profile & Security** and confirm with a 6-digit code.
+
+**WebAuthn (optional).** **Dashboard → Authentication → Passkeys**, marked BETA
+in the sidebar. Note the naming: the dashboard calls this surface **Passkeys**,
+while the API calls the factor type **WebAuthn** (`mfa.webauthn.register()`) —
+same credential standard, different label. The **Multi-Factor** page is a
+*different* page and lists only TOTP and SMS, so enabling things there will not
+clear a `MFA enroll is disabled for WebAuthn` error. If the Passkeys feature is
+unavailable or misbehaving on your project, the enrolment UI says so and TOTP
+covers the same requirement — nothing else in the system cares which factor
+type satisfied the challenge.
+
+While you are on the Multi-Factor page, **Limit duration of AAL1 sessions**
+(Enhanced MFA Security) is worth leaving ON. It terminates a session that has
+not satisfied its second factor within 15 minutes, which complements the route
+guard: the guard stops an `aal1` session *reaching* protected routes, and this
+stops it lingering at all.
+
+Users enrol from **Profile & Security**. Once a verified factor exists, the
+`has_mfa` claim flips on and the route guard holds every protected route at
+`/mfa` until the session reaches `aal2`.
+
+> Enrolment writes a new factor but the *current* token still says
+> `has_mfa: false` until it refreshes. Sign out and back in after enrolling to
+> see the step-up flow.
+
+### 6. Switch the recovery email to a 6-digit code
 
 **Dashboard → Authentication → Email Templates → Reset Password**. Replace the
 magic-link body with the token variable so the OTP screen has a code to verify:
@@ -264,14 +319,14 @@ magic-link body with the token variable so the OTP screen has a code to verify:
 <p>This code expires in 10 minutes. If you did not request it, ignore this email.</p>
 ```
 
-### 5. Configure Google OAuth (optional)
+### 7. Configure Google OAuth (optional)
 
 **Dashboard → Authentication → Providers → Google.** Add
 `https://<your-project-ref>.supabase.co/auth/v1/callback` as an authorised
 redirect URI in the Google Cloud console, and add
 `{NEXT_PUBLIC_SITE_URL}/auth/callback` to Supabase's **Redirect URLs**.
 
-### 6. Create the first Super Admin
+### 8. Create the first Super Admin
 
 Sign up normally, then promote the account in the SQL Editor:
 
@@ -283,7 +338,7 @@ update public.profiles
 
 Sign out and back in so a new token is minted with the updated claim.
 
-### 7. Start
+### 9. Start
 
 ```bash
 npm run dev

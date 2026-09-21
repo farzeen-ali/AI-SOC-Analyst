@@ -15,7 +15,10 @@ import {
 
 import { AuroraBackground } from "@/components/brand/aurora-background";
 import { ConsolePreview } from "@/components/marketing/console-preview";
+import { Magnetic } from "@/components/motion/magnetic";
+import { Parallax, WordReveal } from "@/components/motion/parallax";
 import { ScrollProgress } from "@/components/motion/scroll-progress";
+import { TiltCard } from "@/components/motion/tilt-card";
 import { SpotlightCard } from "@/components/motion/spotlight-card";
 import { Reveal } from "@/components/motion/reveal";
 import { SiteFooter } from "@/components/marketing/site-footer";
@@ -108,12 +111,13 @@ export default function HomePage() {
             </span>
 
             <h1 className="font-heading text-[2.5rem] leading-[1.06] font-semibold tracking-tight sm:text-[3.25rem] lg:text-[3.6rem]">
-              The SOC analyst
-              <br />
-              that never{" "}
-              <span className="text-gradient-animated">clears the queue</span>
-              <br />
-              by ignoring it.
+              <WordReveal text="The SOC analyst that never" />{" "}
+              <WordReveal
+                text="clears the queue"
+                wordClassName="text-gradient-animated"
+                delay={0.1}
+              />{" "}
+              <WordReveal text="by ignoring it." delay={0.2} />
             </h1>
 
             <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
@@ -124,15 +128,17 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button
-                size="lg"
-                className="h-12 rounded-xl bg-gradient-to-r from-brand-1 via-primary to-brand-2 px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 hover:brightness-110"
-                nativeButton={false}
-                render={<Link href="/signup" />}
-              >
-                Create your workspace
-                <ArrowRightIcon className="size-4" />
-              </Button>
+              <Magnetic>
+                <Button
+                  size="lg"
+                  className="h-12 rounded-xl bg-gradient-to-r from-brand-1 via-primary to-brand-2 px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 hover:brightness-110"
+                  nativeButton={false}
+                  render={<Link href="/signup" />}
+                >
+                  Create your workspace
+                  <ArrowRightIcon className="size-4" />
+                </Button>
+              </Magnetic>
 
               <Button
                 size="lg"
@@ -151,7 +157,11 @@ export default function HomePage() {
           </Reveal>
 
           <Reveal index={1}>
-            <ConsolePreview />
+            <Parallax distance={26} direction="up">
+              <TiltCard strength={6}>
+                <ConsolePreview />
+              </TiltCard>
+            </Parallax>
           </Reveal>
         </div>
       </section>

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 
 import { ThemeProvider } from "@/components/theme-provider";
+import { StructuredData } from "@/components/seo/structured-data";
+import { env } from "@/lib/env";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -29,30 +31,79 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+const SITE_NAME = "GuardAI";
+const SITE_DESCRIPTION =
+  "GuardAI is an AI-powered SOC analyst. It ingests your security logs, " +
+  "detects threats with retrieval-augmented analysis, and returns ranked " +
+  "incidents with remediation already drafted — cutting MTTD and MTTR for " +
+  "enterprise security teams.";
+
 export const metadata: Metadata = {
+  // Makes every relative OG/canonical URL below resolve correctly.
+  metadataBase: new URL(env.siteUrl),
   title: {
-    default: "GuardAI — Autonomous SOC Analyst",
+    default: "GuardAI — AI SOC Analyst for Automated Threat Detection",
     template: "%s · GuardAI",
   },
-  description:
-    "GuardAI is an AI-powered SOC analyst that triages security logs, detects threats in real time, and drives incident response for enterprise teams.",
-  applicationName: "GuardAI",
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  generator: null,
+  referrer: "strict-origin-when-cross-origin",
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  /*
+   * Keywords carry little weight with classic search engines, but answer
+   * engines do read them as topical hints. These mirror the questions the
+   * product actually answers rather than stuffing volume terms.
+   */
   keywords: [
-    "SOC",
-    "security operations",
-    "threat detection",
-    "incident response",
-    "SIEM",
-    "AI security analyst",
+    "AI SOC analyst",
+    "automated threat detection",
+    "security log analysis",
+    "SIEM alternative",
+    "incident response automation",
+    "MTTD MTTR reduction",
+    "RAG threat intelligence",
+    "multi-tenant security platform",
+    "SOC automation software",
+    "log ingestion and triage",
   ],
-  robots: { index: true, follow: true },
+  category: "Security Software",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: "GuardAI — AI SOC Analyst for Automated Threat Detection",
+    description: SITE_DESCRIPTION,
+    url: "/",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GuardAI — AI SOC Analyst",
+    description: SITE_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  formatDetection: { telephone: false, address: false, email: false },
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f9fb" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0f18" },
+    { media: "(prefers-color-scheme: light)", color: "#fbfafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0707" },
   ],
+  colorScheme: "dark light",
   width: "device-width",
   initialScale: 1,
 };
@@ -64,6 +115,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Warms the TLS handshake to Supabase before the first auth call. */}
+        <link rel="preconnect" href={env.supabaseOrigin} crossOrigin="" />
+        <link rel="dns-prefetch" href={env.supabaseOrigin} />
+        {/*
+          JSON-LD lives in <head> rather than <body>. Both are valid for
+          crawlers, but React warns about a <script> rendered inside the body
+          tree on every page load, and the warning buries real errors.
+        */}
+        <StructuredData />
+      </head>
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <ThemeProvider
           attribute="class"

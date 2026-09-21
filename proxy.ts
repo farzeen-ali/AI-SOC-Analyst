@@ -31,6 +31,9 @@ const AUTH_ROUTES = [
   "/check-email",
 ];
 
+/** Authenticated, but deliberately reachable at aal1. */
+const STEP_UP_ROUTE = "/mfa";
+
 /** Requires any authenticated session. */
 const PROTECTED_PREFIXES = ["/dashboard", "/settings", "/super-admin"];
 
@@ -95,6 +98,48 @@ export async function proxy(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = "/forgot-password";
       url.search = "?reason=expired";
+      return withNoStore(NextResponse.redirect(url));
+    }
+    return withNoStore(response);
+  }
+
+  /*
+   * Second-factor gate.
+   *
+   * `has_mfa` says a verified factor exists; `aal` says whether this session
+   * has satisfied it. Both are signed claims, so the check costs nothing and
+   * cannot be spoofed by the client. Anyone enrolled but still at aal1 is held
+   * at /mfa until they step up — this runs before the protected-route check so
+   * it also covers /super-admin.
+   */
+  if (isSignedIn && claims?.has_mfa && claims.aal !== "aal2") {
+    // An API caller cannot follow an HTML redirect usefully — answer in the
+    // shape it asked for so the client sees a real error instead of parsing
+    // a redirect body as JSON.
+    if (pathname.startsWith("/api/")) {
+      return withNoStore(
+        NextResponse.json(
+          { error: "Second factor required.", code: "mfa_required" },
+          { status: 401 }
+        )
+      );
+    }
+
+    if (pathname !== STEP_UP_ROUTE && (isProtected || isPublic === false)) {
+      const url = request.nextUrl.clone();
+      url.pathname = STEP_UP_ROUTE;
+      url.search = `?redirectTo=${encodeURIComponent(pathname + search)}`;
+      return withNoStore(NextResponse.redirect(url));
+    }
+    return withNoStore(response);
+  }
+
+  // Already at aal2, or no factor enrolled: nothing to do on the step-up page.
+  if (pathname === STEP_UP_ROUTE) {
+    if (!isSignedIn) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.search = "";
       return withNoStore(NextResponse.redirect(url));
     }
     return withNoStore(response);

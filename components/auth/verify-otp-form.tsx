@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import { useActionState, useTransition } from "react";
-import { motion } from "framer-motion";
 import { ArrowLeftIcon, Loader2Icon, MailCheckIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -90,14 +89,11 @@ export function VerifyOtpForm({ email }: { email: string }) {
         message={state.status === "error" ? state.message : null}
       />
 
-      <motion.form
+      <form
         ref={formRef}
         action={formAction}
         noValidate
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-        className="space-y-6"
+        className="animate-rise space-y-6"
       >
         <input type="hidden" name="email" value={email} />
 
@@ -114,7 +110,7 @@ export function VerifyOtpForm({ email }: { email: string }) {
         )}
 
         <SubmitButton pendingLabel="Verifying code…">Verify code</SubmitButton>
-      </motion.form>
+      </form>
 
       <div className="flex flex-col items-center gap-3 text-center">
         <p className="text-sm text-muted-foreground">

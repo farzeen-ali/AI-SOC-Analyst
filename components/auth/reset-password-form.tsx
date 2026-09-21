@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useActionState } from "react";
-import { motion } from "framer-motion";
 import { ShieldCheckIcon } from "lucide-react";
 
 import { AuthAlert } from "@/components/auth/auth-alert";
@@ -46,13 +45,10 @@ export function ResetPasswordForm({ email }: { email?: string }) {
         message={state.status === "error" ? state.message : null}
       />
 
-      <motion.form
+      <form
         action={formAction}
         noValidate
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-        className="space-y-4"
+        className="animate-rise space-y-4"
       >
         <PasswordField
           name="password"
@@ -79,7 +75,7 @@ export function ResetPasswordForm({ email }: { email?: string }) {
         <SubmitButton pendingLabel="Updating password…">
           Update password
         </SubmitButton>
-      </motion.form>
+      </form>
 
       <div className="flex items-start gap-2.5 rounded-xl border border-border/60 bg-muted/30 px-3.5 py-3">
         <ShieldCheckIcon className="mt-px size-4 shrink-0 text-primary" />

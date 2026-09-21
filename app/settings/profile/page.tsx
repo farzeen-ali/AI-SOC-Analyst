@@ -12,6 +12,8 @@ import { LogoutForm } from "@/components/dashboard/logout-form";
 import { Reveal } from "@/components/motion/reveal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { MfaEnroll } from "@/components/auth/mfa-enroll";
+import { getMfaState } from "@/lib/auth/mfa";
 import { requireAuth, toUserDTO } from "@/lib/auth/dal";
 import { roleLabel } from "@/lib/roles";
 
@@ -20,6 +22,7 @@ export const metadata: Metadata = { title: "Profile & Security" };
 export default async function ProfileSettingsPage() {
   const context = await requireAuth();
   const user = toUserDTO(context);
+  const mfa = await getMfaState();
 
   const details: Array<{ label: string; value: string }> = [
     { label: "Full name", value: user.fullName },
@@ -109,21 +112,32 @@ export default async function ProfileSettingsPage() {
             </Button>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-xl border border-border/50 bg-background/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-3 rounded-xl border border-border/50 bg-background/40 p-3">
             <div className="flex items-start gap-2.5">
-              <FingerprintIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">
+              <FingerprintIcon className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
                   Multi-factor authentication
+                  {mfa.enrolled ? (
+                    <span className="rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 font-mono text-[0.55rem] tracking-wider text-success uppercase">
+                      Active
+                    </span>
+                  ) : (
+                    <span className="rounded-md border border-warning/30 bg-warning/10 px-1.5 py-0.5 font-mono text-[0.55rem] tracking-wider text-warning uppercase">
+                      Not configured
+                    </span>
+                  )}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  TOTP enrolment ships with the Phase 2 account hardening work.
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                  Add a second factor to your sign-in: a 6-digit code from an
+                  authenticator app, or Windows Hello, Touch ID, your device
+                  PIN, or a hardware security key. Until it is satisfied, a
+                  session cannot reach any part of your workspace.
                 </p>
               </div>
             </div>
-            <span className="shrink-0 self-start rounded-md border border-border/60 bg-muted/50 px-2 py-1 font-mono text-[0.6rem] tracking-wide text-muted-foreground uppercase sm:self-auto">
-              Coming soon
-            </span>
+
+            <MfaEnroll factors={mfa.factors} />
           </div>
         </section>
       </Reveal>

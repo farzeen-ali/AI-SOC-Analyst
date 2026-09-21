@@ -46,15 +46,43 @@ export async function GET(request: NextRequest) {
       });
 
   if (error) {
-    console.error("[auth] callback exchange failed", error.message);
-    return NextResponse.redirect(
-      `${origin}/auth-error?reason=${encodeURIComponent(error.code ?? "exchange-failed")}`
-    );
+    console.error("[auth] callback exchange failed", error.code, error.message);
+
+    /*
+     * A failed exchange does NOT mean the email failed to confirm.
+     *
+     * Supabase verifies the token on its own /auth/v1/verify endpoint and only
+     * then redirects here, so by this point the address is already confirmed.
+     * The exchange fails when the PKCE code verifier is missing — classically
+     * because the link was opened in a different browser to the one that
+     * signed up. Telling that person "we could not sign you in" is both
+     * alarming and wrong; their account is fine, they just need to sign in.
+     */
+    if (code) {
+      return NextResponse.redirect(
+        `${origin}/login?confirmed=1&reason=fresh-signin`
+      );
+    }
+
+    const reason =
+      error.code === "otp_expired" || /expired/i.test(error.message)
+        ? "link-expired"
+        : "link-invalid";
+
+    return NextResponse.redirect(`${origin}/login?reason=${reason}`);
   }
 
   // A password recovery link must land on the reset screen, not the dashboard.
   if (type === "recovery") {
     return NextResponse.redirect(`${origin}/reset-password`);
+  }
+
+  // Email confirmation ends on the sign-in page, deliberately: people expect
+  // to sign in after confirming, and it avoids a half-established session
+  // bouncing off the dashboard guard.
+  if (type === "signup" || type === "email") {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(`${origin}/login?confirmed=1`);
   }
 
   const { data: claimsData } = await supabase.auth.getClaims();

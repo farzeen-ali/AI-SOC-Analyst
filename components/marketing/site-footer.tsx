@@ -52,7 +52,9 @@ export function SiteFooter() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    /* -my-1 py-1 keeps the visual rhythm while lifting the hit
+                       area to the 24px WCAG 2.5.8 minimum. */
+                    className="-my-1 inline-flex min-h-6 items-center py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
                     {link.label}
                   </Link>

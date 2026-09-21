@@ -25,7 +25,10 @@ export type AuditAction =
   | "ingest.file_deleted"
   | "finding.status_changed"
   | "team.member_invited"
-  | "ai.investigation";
+  | "ai.investigation"
+  | "auth.email_confirmed"
+  | "auth.mfa_enrolled"
+  | "auth.mfa_verified";
 
 export interface AuditEntry {
   action: AuditAction;

@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import { useActionState } from "react";
-import { motion } from "framer-motion";
 import { MailIcon } from "lucide-react";
 
 import { AuthAlert } from "@/components/auth/auth-alert";
@@ -45,13 +44,10 @@ export function LoginForm({ redirectTo, notice }: LoginFormProps) {
       )}
       <AuthAlert tone="error" message={state.status === "error" ? state.message : null} />
 
-      <motion.form
+      <form
         action={formAction}
         noValidate
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-        className="space-y-4"
+        className="animate-rise space-y-4"
       >
         <input type="hidden" name="redirectTo" value={redirectTo ?? ""} />
 
@@ -97,7 +93,7 @@ export function LoginForm({ redirectTo, notice }: LoginFormProps) {
         <SubmitButton pendingLabel="Verifying credentials…">
           Sign in
         </SubmitButton>
-      </motion.form>
+      </form>
 
       <AuthDivider />
 

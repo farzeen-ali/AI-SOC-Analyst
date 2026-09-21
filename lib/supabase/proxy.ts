@@ -82,6 +82,8 @@ export async function updateSession(
           ? raw.workspace_role
           : null,
       is_suspended: raw.is_suspended === true,
+      aal: typeof raw.aal === "string" ? raw.aal : "aal1",
+      has_mfa: raw.has_mfa === true,
     },
   };
 }

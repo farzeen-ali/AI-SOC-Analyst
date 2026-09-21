@@ -48,6 +48,20 @@ export const env = {
   get qstashToken() {
     return required("QSTASH_TOKEN", process.env.QSTASH_TOKEN);
   },
+  /**
+   * Supabase origin only (no path), safe to render into a `preconnect` tag.
+   * Returns an empty string when unset so the tag degrades to a no-op rather
+   * than throwing during a build without credentials.
+   */
+  get supabaseOrigin() {
+    const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!raw) return "";
+    try {
+      return new URL(raw).origin;
+    } catch {
+      return "";
+    }
+  },
   get siteUrl() {
     return (
       process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??

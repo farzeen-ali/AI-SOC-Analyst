@@ -17,6 +17,15 @@ function resolveNotice(params: Record<string, string | string[] | undefined>) {
     return Array.isArray(value) ? value[0] : value;
   };
 
+  // Email confirmation lands here on purpose — see app/auth/confirm/route.ts.
+  if (first("confirmed")) {
+    return {
+      tone: "success",
+      message:
+        "Email confirmed. Sign in below to reach your workspace.",
+    } satisfies Notice;
+  }
+
   if (first("signedOut")) {
     return {
       tone: "success",
@@ -37,6 +46,20 @@ function resolveNotice(params: Record<string, string | string[] | undefined>) {
     return {
       tone: "warning",
       message: "Your session expired. Please sign in again.",
+    } satisfies Notice;
+  }
+  if (reason === "link-expired") {
+    return {
+      tone: "warning",
+      message:
+        "That confirmation link has expired. Sign in to have a new one sent, or sign up again.",
+    } satisfies Notice;
+  }
+  if (reason === "link-invalid") {
+    return {
+      tone: "warning",
+      message:
+        "That link could not be read. It may already have been used — try signing in.",
     } satisfies Notice;
   }
   if (reason === "suspended") {

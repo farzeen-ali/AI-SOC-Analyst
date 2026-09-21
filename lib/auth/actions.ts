@@ -123,7 +123,9 @@ export async function signUpAction(
       // Consumed by the on_auth_user_created trigger, which provisions the
       // workspace and the tenant_admin membership.
       data: { full_name: fullName, workspace_name: workspaceName },
-      emailRedirectTo: `${env.siteUrl}/auth/callback?next=/dashboard`,
+      // Stateless confirmation: no PKCE verifier, so the link works even
+      // when the email is opened on a different device.
+      emailRedirectTo: `${env.siteUrl}/auth/confirm?type=signup`,
     },
   });
 

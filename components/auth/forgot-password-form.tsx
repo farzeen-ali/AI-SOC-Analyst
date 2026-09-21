@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState } from "react";
-import { motion } from "framer-motion";
 import { ArrowLeftIcon, MailIcon } from "lucide-react";
 
 import { AuthAlert } from "@/components/auth/auth-alert";
@@ -52,13 +51,10 @@ export function ForgotPasswordForm({ expired }: { expired?: boolean }) {
         message={state.status === "idle" ? null : state.message}
       />
 
-      <motion.form
+      <form
         action={formAction}
         noValidate
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-        className="space-y-4"
+        className="animate-rise space-y-4"
       >
         <AuthField
           name="email"
@@ -77,7 +73,7 @@ export function ForgotPasswordForm({ expired }: { expired?: boolean }) {
         <SubmitButton pendingLabel="Sending code…">
           Send verification code
         </SubmitButton>
-      </motion.form>
+      </form>
 
       <div className="rounded-xl border border-border/60 bg-muted/30 px-3.5 py-3">
         <p className="text-xs leading-relaxed text-muted-foreground">

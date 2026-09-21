@@ -410,6 +410,10 @@ export interface GuardAIClaims {
   workspace_id?: string | null;
   workspace_role?: WorkspaceRole | null;
   is_suspended?: boolean;
+  /** Authenticator Assurance Level minted by Supabase: aal1 or aal2. */
+  aal?: string;
+  /** True when the account has at least one *verified* MFA factor. */
+  has_mfa?: boolean;
 }
 
 export type LogFile = Database["public"]["Tables"]["log_files"]["Row"];
