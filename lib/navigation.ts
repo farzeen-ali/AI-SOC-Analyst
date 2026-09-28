@@ -75,7 +75,6 @@ export const WORKSPACE_NAV: NavSection[] = [
         label: "Billing & Plan",
         icon: CreditCardIcon,
         access: "tenant_admin",
-        comingSoon: true,
       },
       {
         href: "/dashboard/settings",

@@ -28,7 +28,15 @@ export type AuditAction =
   | "ai.investigation"
   | "auth.email_confirmed"
   | "auth.mfa_enrolled"
-  | "auth.mfa_verified";
+  | "auth.mfa_verified"
+  | "billing.checkout_started"
+  | "billing.portal_opened"
+  | "billing.subscription_activated"
+  | "billing.subscription_updated"
+  | "billing.subscription_cancelled"
+  | "billing.quota_exceeded"
+  | "team.invitation_revoked"
+  | "team.invitation_accepted";
 
 export interface AuditEntry {
   action: AuditAction;

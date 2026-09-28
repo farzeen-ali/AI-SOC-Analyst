@@ -7,6 +7,7 @@ import { Reveal } from "@/components/motion/reveal";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { Button } from "@/components/ui/button";
+import { PLANS as CATALOGUE, formatPlanPrice } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -14,37 +15,26 @@ export const metadata: Metadata = {
   description: "GuardAI plans for security teams of every size.",
 };
 
-const PLANS = [
+/**
+ * Marketing copy for each tier.
+ *
+ * Feature text is read from the plan catalogue rather than retyped, so the
+ * page cannot promise a limit the upload gate does not actually grant.
+ */
+const TIERS = [
   {
-    name: "Free",
-    price: "$0",
+    ...CATALOGUE.free,
     cadence: "forever",
     description: "For evaluating GuardAI on a single workspace.",
-    features: [
-      "1 workspace, 3 analyst seats",
-      "Email/password and Google sign-in",
-      "Row Level Security tenant isolation",
-      "Threat dashboard and remediation playbooks",
-      "7-day incident retention",
-    ],
     cta: "Start free",
     href: "/signup",
     featured: false,
   },
   {
-    name: "Pro",
-    price: "$49",
-    cadence: "per seat / month",
+    ...CATALOGUE.pro,
+    cadence: "per workspace / month",
     description: "For teams running GuardAI as their primary triage layer.",
-    features: [
-      "Unlimited analyst seats",
-      "Unlimited log ingestion",
-      "Custom SOC detection rules",
-      "Scoped API keys for log shipping",
-      "12-month incident retention",
-      "Workspace audit log access",
-    ],
-    cta: "Start free, upgrade later",
+    cta: "Start free, upgrade in-app",
     href: "/signup",
     featured: true,
   },
@@ -63,20 +53,20 @@ export default function PricingPage() {
             Pricing
           </span>
           <h1 className="font-heading text-4xl font-semibold tracking-tight sm:text-5xl">
-            Priced per analyst,{" "}
+            One flat price,{" "}
             <span className="text-gradient">not per alert</span>
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
-            Every workspace starts free. Billing and checkout arrive with Phase
-            2 — until then, Pro features are described here so you can plan
-            around them.
+            Every workspace starts free, with no card. Upgrade to Pro from
+            inside the app whenever you need unlimited scans and the full
+            analyst roster — checkout is handled by Stripe.
           </p>
         </Reveal>
       </section>
 
       <section className="px-6 pb-24">
         <div className="mx-auto grid w-full max-w-4xl gap-5 md:grid-cols-2">
-          {PLANS.map((plan, index) => (
+          {TIERS.map((plan, index) => (
             <Reveal key={plan.name} index={index}>
               <article
                 className={cn(
@@ -102,7 +92,7 @@ export default function PricingPage() {
 
                 <p className="mt-5 flex items-baseline gap-1.5">
                   <span className="font-heading text-4xl font-semibold tracking-tight">
-                    {plan.price}
+                    {formatPlanPrice(plan)}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {plan.cadence}

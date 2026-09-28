@@ -5,6 +5,9 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Reveal } from "@/components/motion/reveal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InviteModal } from "@/components/team/invite-modal";
+import { PendingInvitations } from "@/components/team/pending-invitations";
+import { seatLimit } from "@/lib/billing/plans";
+import { listPendingInvitations } from "@/lib/team/invitations";
 import { requireTenantAdmin } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -52,7 +55,16 @@ export default async function TeamPage() {
     : { data: [], error: null };
 
   const members = (data ?? []) as unknown as MemberRow[];
-  const seats = context.workspace?.seats ?? 0;
+
+  // Derived from the plan rather than the stored column, so the UI matches
+  // what the invite action will actually allow even if a row is stale.
+  const seats = context.workspace
+    ? seatLimit(context.workspace.plan)
+    : 0;
+
+  const invitations = context.workspace
+    ? await listPendingInvitations(context.workspace.id)
+    : [];
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-8">
@@ -81,7 +93,13 @@ export default async function TeamPage() {
         </div>
       </Reveal>
 
-      <Reveal index={1}>
+      {invitations.length > 0 && (
+        <Reveal index={1}>
+          <PendingInvitations invitations={invitations} />
+        </Reveal>
+      )}
+
+      <Reveal index={2}>
         <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl">
           {error && (
             <p className="px-4 py-6 text-sm text-destructive">

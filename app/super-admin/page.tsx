@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   BuildingIcon,
+  CpuIcon,
+  CreditCardIcon,
+  ScanLineIcon,
   ScrollTextIcon,
   ShieldOffIcon,
   SparklesIcon,
@@ -10,16 +13,22 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/page-header";
-import { PhasePlaceholder } from "@/components/dashboard/phase-placeholder";
+import { SystemHealthChart } from "@/components/admin/system-health-chart";
 import { Reveal } from "@/components/motion/reveal";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
-import { getPlatformMetrics } from "@/lib/admin/queries";
+import {
+  getPlatformMetrics,
+  getPlatformUsageSeries,
+} from "@/lib/admin/queries";
 
 export const metadata: Metadata = { title: "Global Analytics" };
 
 export default async function SuperAdminPage() {
-  const metrics = await getPlatformMetrics();
+  const [metrics, usage] = await Promise.all([
+    getPlatformMetrics(),
+    getPlatformUsageSeries(14),
+  ]);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -89,7 +98,33 @@ export default async function SuperAdminPage() {
           icon={SparklesIcon}
           tone="success"
         />
+        <StatCard
+          index={6}
+          label="Active subscriptions"
+          value={metrics.activeSubscriptions}
+          hint="Paying or in trial"
+          icon={CreditCardIcon}
+          tone="primary"
+        />
+        <StatCard
+          index={7}
+          label="Scans today"
+          value={metrics.scansToday}
+          hint="Across every tenant"
+          icon={ScanLineIcon}
+        />
+        <StatCard
+          index={8}
+          label="Tokens today"
+          value={metrics.tokensToday}
+          hint="Embedding + analysis"
+          icon={CpuIcon}
+        />
       </div>
+
+      <Reveal index={1}>
+        <SystemHealthChart points={usage} />
+      </Reveal>
 
       <Reveal index={6}>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -112,17 +147,6 @@ export default async function SuperAdminPage() {
         </div>
       </Reveal>
 
-      <PhasePlaceholder
-        icon={SparklesIcon}
-        phase="Phase 2"
-        title="AI token & log-volume telemetry"
-        description="Tenant, user, and audit metrics are live. Token consumption and scanned-log counters arrive with the ingestion and RAG pipeline."
-        bullets={[
-          "System API usage and AI token consumption per tenant",
-          "Total scanned logs and ingestion throughput",
-          "Per-tenant cost attribution and quota alerts",
-        ]}
-      />
     </div>
   );
 }

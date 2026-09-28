@@ -165,6 +165,65 @@ role, and seat limits are enforced server-side in `inviteMemberAction`.
 
 ---
 
+## What Phase 4 delivers
+
+### Subscription tiers & Stripe
+
+| | Free | Pro ($20/mo) |
+| --- | --- | --- |
+| Seats | 1 Tenant Admin + 1 analyst | 1 Tenant Admin + 10 analysts |
+| Daily scans | 5 | Unlimited |
+| Max upload | 10 MB | 100 MB |
+| AI execution | Standard lane | Priority lane |
+
+Hosted Stripe Checkout and the hosted Billing Portal — card details never
+touch this application. Entitlement is granted by the signed webhook, never by
+the browser returning from checkout, so a user who edits the success URL gets
+nothing.
+
+`lib/billing/plans.ts` is the single source of truth: the upload gate, the
+seat check, the quota meter and the pricing page all read from it, and the
+`seats_for_plan()` trigger in the database enforces the same numbers.
+
+### Webhook hardening
+
+- HMAC verified with `STRIPE_WEBHOOK_SECRET` against the **raw** body before a
+  single field is read. Stripe's tolerance window also defeats replay of a
+  captured request.
+- Event ids are claimed in `stripe_events` before the effect is applied, so a
+  duplicate delivery is a no-op. A handler that throws releases the claim so
+  Stripe's retry can apply it.
+- The route is excluded from the proxy matcher: Stripe has no session cookie,
+  and nothing may touch the request before the raw body is read.
+
+### Atomic metering
+
+Daily scans are claimed with an `INCR` / `DECR` pair inside a Redis `EVAL`
+script. Redis runs the script atomically, so the increment *is* the claim —
+two analysts uploading simultaneously cannot both take the last scan. A
+`GET` followed by a conditional `SET` would leave exactly that window.
+
+Without Upstash the gate degrades to `consume_scan_quota()`, a single
+`insert … on conflict do update … where scans < limit` statement. Same
+guarantee, one round trip, just slower. Exceeding the quota returns **402**
+with `code: "quota_exceeded"`, which is what opens the upgrade modal — a 429
+would mean "slow down", and the distinction drives different UI.
+
+### Tokenized team invitations
+
+32 random bytes, stored only as a SHA-256 hash, valid 72 hours, single use,
+revocable. The invited address is bound into the row and is never read from
+the submitted form, so a leaked link can only ever create the one account it
+was issued for. `/join/<token>` is a public registration page; acceptance
+re-checks expiry, revocation and the current seat limit before creating
+anything.
+
+### Super Admin portal
+
+Active subscriptions, scans and token consumption per day, a 14-day usage
+chart, and per-tenant plan, seat and scan totals alongside the existing
+suspend/reactivate controls.
+
 ## Setup
 
 ### 1. Install and configure
@@ -208,6 +267,7 @@ order**, or apply them with the CLI. Both are idempotent — safe to re-run.
 | `0004_fix_vector_operator_search_path.sql` | Lets `match_log_chunks` resolve pgvector's `<=>` operator, plus `debug_vector_ops()` |
 | `0005_remediation_checklists.sql` | Per-step remediation triage, the materialising trigger, and `workspace_threat_analytics()` |
 | `0006_mfa_claims.sql` | Adds the `has_mfa` claim to the access-token hook so MFA gating is a pure claim check, plus `debug_my_mfa()` |
+| `0007_billing_invites_metering.sql` | Stripe columns on `workspaces`, the plan→seats trigger, the `stripe_events` replay ledger, tokenized `workspace_invitations`, the `usage_daily` rollup, and the atomic `consume_scan_quota()` gate, plus `debug_my_billing()` |
 
 > **If ingestion fails with "operator does not exist: vector <=> vector"**,
 > `0004` has not been applied. The `<=>` operator is resolved through the
@@ -338,10 +398,115 @@ update public.profiles
 
 Sign out and back in so a new token is minted with the updated claim.
 
-### 9. Start
+### 9. Set up Stripe (test mode)
+
+Billing runs entirely in Stripe's **test mode** — no real money moves, and the
+card `4242 4242 4242 4242` is accepted with any future expiry and any CVC.
+
+**9a. Create the Pro product and price**
+
+Dashboard → make sure the **Test mode** toggle (top right) is ON, then
+**Product catalogue → + Add product**:
+
+| Field | Value |
+| --- | --- |
+| Name | `GuardAI Pro` |
+| Pricing model | Recurring |
+| Price | `20.00` USD |
+| Billing period | Monthly |
+
+Save, then copy the **price id** — it looks like `price_1Ab2Cd...`, *not* the
+product id (`prod_…`). That distinction matters: checkout fails with "No such
+price" if you paste the product id.
+
+**9b. Copy your API key**
+
+Dashboard → **Developers → API keys** → reveal the **Secret key** (`sk_test_…`).
+
+**9c. Install the Stripe CLI and forward webhooks**
+
+The webhook is what actually grants Pro, so it has to reach your machine. In
+local development Stripe cannot call `localhost` directly — the CLI opens the
+tunnel for you.
+
+```bash
+winget install Stripe.StripeCli
+```
+
+Then log in and start forwarding, leaving this running in its own terminal:
+
+```bash
+stripe login
+```
+
+```bash
+stripe listen --events checkout.session.completed,customer.subscription.updated,customer.subscription.deleted --forward-to localhost:3000/api/stripe/webhook
+```
+
+The event list is required. Stripe now has two event families — classic
+*snapshot* events and v2 *thin* events — so CLI v1.52+ refuses to guess and
+errors with *"must specify events to forward using --events, --all-snapshot,
+or --all-thin"*. Naming the three events explicitly also keeps the terminal
+quiet and mirrors exactly what you subscribe to on a deployed endpoint.
+(`--all-snapshot` works too, but forwards everything.)
+
+It prints a line like `Ready! Your webhook signing secret is whsec_...`. That
+secret is per-session — if you restart `stripe listen`, copy the new one.
+
+**9d. Fill in `.env.local`**
+
+```bash
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRO_PRICE_ID=price_...
+```
+
+Restart `npm run dev` afterwards — these are read at startup.
+
+**9e. Try it**
+
+1. Sign in as a Tenant Admin and open **/dashboard/billing**.
+2. Click **Upgrade to Pro**.
+3. Pay with `4242 4242 4242 4242`, any future expiry, any CVC, any postcode.
+4. Watch the `stripe listen` terminal: you should see
+   `checkout.session.completed [200]`.
+5. Reload the billing page — the plan reads **Pro**, seats become 11, and the
+   daily scan meter switches to unlimited.
+
+You can also fire events without paying:
+
+```bash
+stripe trigger customer.subscription.deleted
+```
+
+**For a deployed environment** (no CLI): Dashboard → **Developers → Webhooks →
+Add endpoint**, URL `https://your-domain.com/api/stripe/webhook`, and select
+`checkout.session.completed`, `customer.subscription.updated` and
+`customer.subscription.deleted`. Copy that endpoint's signing secret into
+`STRIPE_WEBHOOK_SECRET`.
+
+**Troubleshooting**
+
+| Symptom | Cause |
+| --- | --- |
+| `503 Stripe is not configured` | One of the three variables is missing; the app requires all three together |
+| `400 Invalid signature` | `STRIPE_WEBHOOK_SECRET` does not match the listener that sent the event |
+| `must specify events to forward using --events...` | CLI v1.52+ requires the `--events` list shown above |
+| Webhook never fires for one event type | It was left out of the `--events` list; all three are needed |
+| `500 Event ledger unavailable` | Migration `0007` has not been applied — `public.stripe_events` is missing |
+| Paid, but the plan still says Free | The webhook never arrived. Check the `stripe listen` terminal; entitlement comes from the webhook, never from the success redirect |
+| `Could not open the billing portal` | Save the portal settings once at **Settings → Billing → Customer portal** in test mode |
+
+### 10. Start
 
 ```bash
 npm run dev
+```
+
+With billing enabled you want two terminals:
+
+```bash
+stripe listen --events checkout.session.completed,customer.subscription.updated,customer.subscription.deleted --forward-to localhost:3000/api/stripe/webhook
 ```
 
 ---

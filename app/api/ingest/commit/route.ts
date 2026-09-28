@@ -154,10 +154,10 @@ export async function POST(request: NextRequest) {
   /* ---- Hand off to the background worker ---- */
 
   try {
-    const messageId = await publishIngestJob({
-      fileId: file.id,
-      workspaceId: context.workspace.id,
-    });
+    const messageId = await publishIngestJob(
+      { fileId: file.id, workspaceId: context.workspace.id },
+      context.workspace.plan
+    );
 
     if (!messageId && !queueAvailable) {
       // Local development: QStash cannot call back to a loopback address, so

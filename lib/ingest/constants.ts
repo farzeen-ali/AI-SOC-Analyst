@@ -1,9 +1,15 @@
+import { PLANS } from "@/lib/billing/plans";
 import type { LogFormat, WorkspacePlan } from "@/lib/types/database";
 
-/** Hard size ceilings per subscription tier, in bytes. */
+/**
+ * Hard size ceilings per subscription tier, in bytes.
+ *
+ * Derived from the plan catalogue rather than restated, so the upload gate
+ * and the pricing page can never disagree about what a tier includes.
+ */
 export const PLAN_UPLOAD_LIMITS: Record<WorkspacePlan, number> = {
-  free: 10 * 1024 * 1024, // 10 MB
-  pro: 100 * 1024 * 1024, // 100 MB
+  free: PLANS.free.maxUploadBytes,
+  pro: PLANS.pro.maxUploadBytes,
 };
 
 /** Super Admin accounts are exempt from tier limits, but not from this. */

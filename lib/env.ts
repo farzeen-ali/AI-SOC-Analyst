@@ -62,6 +62,25 @@ export const env = {
       return "";
     }
   },
+  /** Server-only. Stripe secret key — `sk_test_…` in sandbox mode. */
+  get stripeSecretKey() {
+    return required("STRIPE_SECRET_KEY", process.env.STRIPE_SECRET_KEY);
+  },
+  /**
+   * Server-only. The endpoint signing secret (`whsec_…`) for the webhook.
+   * Without it every incoming payload is untrusted, so this throws rather
+   * than defaulting — an unverified billing webhook is worse than none.
+   */
+  get stripeWebhookSecret() {
+    return required(
+      "STRIPE_WEBHOOK_SECRET",
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  },
+  /** The recurring Price the Pro plan checks out against (`price_…`). */
+  get stripeProPriceId() {
+    return required("STRIPE_PRO_PRICE_ID", process.env.STRIPE_PRO_PRICE_ID);
+  },
   get siteUrl() {
     return (
       process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
@@ -95,5 +114,19 @@ export const hasQStash = Boolean(
 );
 
 export const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
+
+/**
+ * True when Stripe is fully configured.
+ *
+ * All three values are required together: a secret key without a price id
+ * cannot start a checkout, and either without the signing secret would leave
+ * the webhook unable to verify what Stripe sends back. Billing UI degrades to
+ * a "not configured" state rather than throwing when this is false.
+ */
+export const hasStripe = Boolean(
+  process.env.STRIPE_SECRET_KEY &&
+    process.env.STRIPE_WEBHOOK_SECRET &&
+    process.env.STRIPE_PRO_PRICE_ID
+);
 
 export const isProduction = process.env.NODE_ENV === "production";

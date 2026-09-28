@@ -3,6 +3,8 @@ import "server-only";
 import { Client, Receiver } from "@upstash/qstash";
 
 import { env, hasQStash, isProduction } from "@/lib/env";
+import { planFor } from "@/lib/billing/plans";
+import type { WorkspacePlan } from "@/lib/types/database";
 
 /**
  * Background job transport.
@@ -18,6 +20,27 @@ export const INGEST_JOB_PATH = "/api/jobs/process-log";
 export interface IngestJobPayload {
   fileId: string;
   workspaceId: string;
+}
+
+/**
+ * AI execution priority.
+ *
+ * Implemented with QStash flow control rather than a flag the worker reads:
+ * each tier publishes under its own flow-control key with its own
+ * parallelism, so Free jobs queue behind *each other* while Pro jobs keep
+ * flowing. Under load that is what "priority execution" actually has to mean
+ * — a label the worker ignores would change nothing about who waits.
+ *
+ * The small Free delay costs a few seconds on an idle system and gives Pro a
+ * genuine head start on a busy one.
+ */
+const PRIORITY_LANES = {
+  priority: { key: "guardai-ingest-pro", parallelism: 12, retries: 5, delay: 0 },
+  standard: { key: "guardai-ingest-free", parallelism: 2, retries: 3, delay: 3 },
+} as const;
+
+function laneFor(plan: WorkspacePlan) {
+  return PRIORITY_LANES[planFor(plan).aiPriority];
 }
 
 let client: Client | null = null;
@@ -74,7 +97,8 @@ export const queueAvailable = hasQStash && isPubliclyReachable(env.siteUrl);
  * Returns the QStash message id, or null when running on the local fallback.
  */
 export async function publishIngestJob(
-  payload: IngestJobPayload
+  payload: IngestJobPayload,
+  plan: WorkspacePlan = "free"
 ): Promise<string | null> {
   if (!queueAvailable) {
     if (isProduction) {
@@ -90,12 +114,16 @@ export async function publishIngestJob(
     return null;
   }
 
+  const lane = laneFor(plan);
+
   const { messageId } = await getClient().publishJSON({
     url: `${env.siteUrl}${INGEST_JOB_PATH}`,
     body: payload,
-    retries: 3,
+    retries: lane.retries,
     // Parsing + embedding a large file legitimately takes minutes.
     timeout: "5m",
+    flowControl: { key: lane.key, parallelism: lane.parallelism },
+    ...(lane.delay > 0 ? { delay: lane.delay } : {}),
   });
 
   return messageId;

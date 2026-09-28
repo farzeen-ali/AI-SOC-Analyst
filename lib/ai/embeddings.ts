@@ -32,15 +32,24 @@ function assertDimensions(values: number[]) {
  * bounds the memory held at once — a 1,500-chunk file would otherwise build a
  * single ~9 MB request body.
  */
-export async function embedChunks(texts: string[]): Promise<number[][]> {
-  if (texts.length === 0) return [];
+export interface EmbedResult {
+  vectors: number[][];
+  /** Tokens billed by the provider, summed across batches. */
+  tokens: number;
+}
+
+export async function embedChunks(texts: string[]): Promise<EmbedResult> {
+  if (texts.length === 0) return { vectors: [], tokens: 0 };
 
   const model = embeddingModel();
   const vectors: number[][] = [];
+  let tokens = 0;
 
   for (let start = 0; start < texts.length; start += EMBEDDING_BATCH_SIZE) {
     const batch = texts.slice(start, start + EMBEDDING_BATCH_SIZE);
-    const { embeddings } = await embedMany({ model, values: batch });
+    const { embeddings, usage } = await embedMany({ model, values: batch });
+
+    tokens += usage?.tokens ?? 0;
 
     for (const embedding of embeddings) {
       assertDimensions(embedding);
@@ -48,7 +57,7 @@ export async function embedChunks(texts: string[]): Promise<number[][]> {
     }
   }
 
-  return vectors;
+  return { vectors, tokens };
 }
 
 /** Embeds a single query for similarity search. */

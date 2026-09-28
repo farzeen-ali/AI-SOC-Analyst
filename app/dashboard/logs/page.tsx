@@ -70,7 +70,11 @@ export default async function LogsPage() {
       </div>
 
       <Reveal index={4}>
-        <UploadDropzone maxBytes={maxBytes} planLabel={plan.toUpperCase()} />
+        <UploadDropzone
+          maxBytes={maxBytes}
+          planLabel={plan.toUpperCase()}
+          canPurchase={context.isTenantAdmin}
+        />
       </Reveal>
 
       <Reveal index={5} className="space-y-3">

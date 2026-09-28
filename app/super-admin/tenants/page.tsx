@@ -47,14 +47,22 @@ export default async function TenantsPage() {
                       )}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      /{tenant.slug} · {tenant.ownerEmail ?? "unknown owner"}
+                      /{tenant.slug} · {tenant.ownerEmail ?? "unknown owner"} ·
+                      created{" "}
+                      {new Date(tenant.created_at).toLocaleDateString(
+                        undefined,
+                        { year: "numeric", month: "short", day: "numeric" }
+                      )}
                     </p>
                   </div>
 
                   <div className="flex shrink-0 items-center gap-2">
                     <span className="rounded-md border border-border/60 bg-muted/50 px-1.5 py-0.5 font-mono text-[0.55rem] tracking-wide text-muted-foreground uppercase">
-                      {tenant.memberCount} member
-                      {tenant.memberCount === 1 ? "" : "s"}
+                      {tenant.scansTotal.toLocaleString()} scan
+                      {tenant.scansTotal === 1 ? "" : "s"}
+                    </span>
+                    <span className="rounded-md border border-border/60 bg-muted/50 px-1.5 py-0.5 font-mono text-[0.55rem] tracking-wide text-muted-foreground uppercase">
+                      {tenant.memberCount} / {tenant.seats} seats
                     </span>
                     <span
                       className={cn(
@@ -65,6 +73,16 @@ export default async function TenantsPage() {
                       )}
                     >
                       {tenant.plan}
+                    </span>
+                    <span
+                      className={cn(
+                        "rounded-md border px-1.5 py-0.5 font-mono text-[0.55rem] tracking-wide uppercase",
+                        tenant.is_suspended
+                          ? "border-destructive/30 bg-destructive/10 text-destructive"
+                          : "border-success/30 bg-success/10 text-success"
+                      )}
+                    >
+                      {tenant.is_suspended ? "Suspended" : "Active"}
                     </span>
 
                     <SuspensionToggle

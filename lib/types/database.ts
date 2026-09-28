@@ -88,6 +88,11 @@ export interface Database {
           subscription_status: SubscriptionStatus;
           is_suspended: boolean;
           seats: number;
+          stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
+          stripe_price_id: string | null;
+          current_period_end: string | null;
+          cancel_at_period_end: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -100,6 +105,11 @@ export interface Database {
           subscription_status?: SubscriptionStatus;
           is_suspended?: boolean;
           seats?: number;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          stripe_price_id?: string | null;
+          current_period_end?: string | null;
+          cancel_at_period_end?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -112,6 +122,11 @@ export interface Database {
           subscription_status?: SubscriptionStatus;
           is_suspended?: boolean;
           seats?: number;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          stripe_price_id?: string | null;
+          current_period_end?: string | null;
+          cancel_at_period_end?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -345,6 +360,81 @@ export interface Database {
         };
         Relationships: [];
       };
+      workspace_invitations: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          email: string;
+          token_hash: string;
+          workspace_role: WorkspaceRole;
+          invited_by: string | null;
+          expires_at: string;
+          accepted_at: string | null;
+          accepted_by: string | null;
+          revoked_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          email: string;
+          token_hash: string;
+          workspace_role?: WorkspaceRole;
+          invited_by?: string | null;
+          expires_at: string;
+          accepted_at?: string | null;
+          accepted_by?: string | null;
+          revoked_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          accepted_at?: string | null;
+          accepted_by?: string | null;
+          revoked_at?: string | null;
+        };
+        Relationships: [];
+      };
+      usage_daily: {
+        Row: {
+          workspace_id: string;
+          day: string;
+          scans: number;
+          tokens: number;
+          ai_calls: number;
+          updated_at: string;
+        };
+        Insert: {
+          workspace_id: string;
+          day?: string;
+          scans?: number;
+          tokens?: number;
+          ai_calls?: number;
+          updated_at?: string;
+        };
+        Update: {
+          scans?: number;
+          tokens?: number;
+          ai_calls?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      stripe_events: {
+        Row: {
+          id: string;
+          type: string;
+          workspace_id: string | null;
+          received_at: string;
+        };
+        Insert: {
+          id: string;
+          type: string;
+          workspace_id?: string | null;
+          received_at?: string;
+        };
+        Update: { type?: string; workspace_id?: string | null };
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -376,6 +466,44 @@ export interface Database {
           bytes_total: number;
           files_last_24h: number;
           bytes_last_24h: number;
+        }[];
+      };
+      record_usage: {
+        Args: {
+          p_workspace_id: string;
+          p_scans?: number;
+          p_tokens?: number;
+          p_ai_calls?: number;
+        };
+        Returns: number;
+      };
+      platform_usage_series: {
+        Args: { p_days?: number };
+        Returns: {
+          day: string;
+          scans: number;
+          tokens: number;
+          ai_calls: number;
+        }[];
+      };
+      workspace_usage_totals: {
+        Args: { p_workspace_id: string };
+        Returns: {
+          scans_today: number;
+          scans_total: number;
+          tokens_total: number;
+        }[];
+      };
+      seats_for_plan: {
+        Args: { p: WorkspacePlan };
+        Returns: number;
+      };
+      consume_scan_quota: {
+        Args: { p_workspace_id: string; p_limit: number | null };
+        Returns: {
+          allowed: boolean;
+          used: number;
+          quota: number | null;
         }[];
       };
     };
@@ -423,3 +551,8 @@ export type ThreatFinding =
 
 export type RemediationStep =
   Database["public"]["Tables"]["finding_remediation_steps"]["Row"];
+
+/** Phase 4 — billing, invitations, metering. */
+export type WorkspaceInvitation =
+  Database["public"]["Tables"]["workspace_invitations"]["Row"];
+export type UsageDaily = Database["public"]["Tables"]["usage_daily"]["Row"];

@@ -14,6 +14,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  UpgradeModal,
+  type QuotaState,
+} from "@/components/billing/upgrade-modal";
 import { Button } from "@/components/ui/button";
 import {
   FILE_INPUT_ACCEPT,
@@ -38,6 +42,8 @@ interface UploadItem {
 interface UploadDropzoneProps {
   maxBytes: number;
   planLabel: string;
+  /** Tenant Admins can pay; analysts get pointed at their admin instead. */
+  canPurchase?: boolean;
 }
 
 /**
@@ -51,12 +57,17 @@ interface UploadDropzoneProps {
  * Client-side checks here are a courtesy — every rule is re-applied on the
  * server, and the file's actual bytes are re-validated by the worker.
  */
-export function UploadDropzone({ maxBytes, planLabel }: UploadDropzoneProps) {
+export function UploadDropzone({
+  maxBytes,
+  planLabel,
+  canPurchase = false,
+}: UploadDropzoneProps) {
   const router = useRouter();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = React.useState(false);
   const [items, setItems] = React.useState<UploadItem[]>([]);
   const dragDepth = React.useRef(0);
+  const [quotaWall, setQuotaWall] = React.useState<QuotaState | null>(null);
 
   const patch = React.useCallback(
     (key: string, next: Partial<UploadItem>) => {
@@ -144,6 +155,22 @@ export function UploadDropzone({ maxBytes, planLabel }: UploadDropzoneProps) {
         const prepared = await prepareResponse.json();
 
         if (!prepareResponse.ok) {
+          /*
+           * 402 + `quota_exceeded` is the plan ceiling rather than a
+           * validation failure, so it opens the upgrade path instead of
+           * sitting in the file list as a red row the user cannot act on.
+           */
+          if (
+            prepareResponse.status === 402 &&
+            prepared?.code === "quota_exceeded"
+          ) {
+            setQuotaWall({
+              used: prepared.used ?? 0,
+              limit: prepared.limit ?? null,
+              resetSeconds: prepared.resetSeconds ?? 0,
+            });
+          }
+
           const issues = prepared?.issues
             ? Object.values(prepared.issues as Record<string, string[]>).flat()
             : undefined;
@@ -329,6 +356,15 @@ export function UploadDropzone({ maxBytes, planLabel }: UploadDropzoneProps) {
           </motion.div>
         ))}
       </AnimatePresence>
+
+      <UpgradeModal
+        open={quotaWall !== null}
+        onOpenChange={(next) => {
+          if (!next) setQuotaWall(null);
+        }}
+        quota={quotaWall}
+        canPurchase={canPurchase}
+      />
     </div>
   );
 }

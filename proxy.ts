@@ -22,6 +22,9 @@ const PUBLIC_ROUTES = [
   "/auth-error",
 ];
 
+/** Invitation landing pages: reachable while signed out, by design. */
+const INVITE_PREFIX = "/join";
+
 /** Auth screens: reachable only while signed out. */
 const AUTH_ROUTES = [
   "/login",
@@ -81,7 +84,8 @@ export async function proxy(request: NextRequest) {
   const isAuthRoute = matches(pathname, AUTH_ROUTES);
   const isProtected = startsWithAny(pathname, PROTECTED_PREFIXES);
   const isSuperAdminRoute = startsWithAny(pathname, SUPER_ADMIN_PREFIXES);
-  const isPublic = matches(pathname, PUBLIC_ROUTES);
+  const isPublic =
+    matches(pathname, PUBLIC_ROUTES) || pathname.startsWith(INVITE_PREFIX);
 
   // A suspended account keeps a valid token until it expires; cut it off here.
   if (isSignedIn && claims?.is_suspended && !isAuthRoute) {
@@ -176,10 +180,12 @@ export const config = {
      * Everything except Next internals and static assets. Auth guards should
      * see as much of the surface as possible, but must not block CSS or images.
      *
-     * `api/jobs` is excluded deliberately: those are queue callbacks with no
-     * session cookie, authenticated by Upstash signature inside the route.
-     * Running the session refresh on them would be pure overhead.
+     * `api/jobs` and `api/stripe` are excluded deliberately: both are
+     * third-party callbacks with no session cookie, authenticated by an HMAC
+     * signature inside the route itself. Running the session refresh on them
+     * would be pure overhead, and for Stripe it must not touch the request
+     * before the raw body is read for signature verification.
      */
-    "/((?!_next/static|_next/image|favicon.ico|api/jobs|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff|woff2|ttf)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/jobs|api/stripe|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff|woff2|ttf)$).*)",
   ],
 };

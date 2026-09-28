@@ -3,6 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import { analyzeThreats } from "@/lib/ai/threat-analysis";
+import { recordTokenUsage } from "@/lib/billing/quota";
 import { embedChunks, toVectorLiteral } from "@/lib/ai/embeddings";
 import { chunkEvents } from "@/lib/ingest/chunk";
 import { ABSOLUTE_MAX_BYTES } from "@/lib/ingest/constants";
@@ -172,7 +173,9 @@ export async function processLogFile(fileId: string): Promise<void> {
 
     /* ---------------- 5. Embed and store vectors ---------------- */
 
-    const vectors = await embedChunks(chunks.map((chunk) => chunk.content));
+    const { vectors, tokens: embeddingTokens } = await embedChunks(
+      chunks.map((chunk) => chunk.content)
+    );
 
     // Replace any partial state from a previous failed attempt.
     await admin.from("log_chunks").delete().eq("file_id", fileId);
@@ -228,6 +231,17 @@ export async function processLogFile(fileId: string): Promise<void> {
       format: detectedFormat,
       eventCount: events.length,
     });
+
+    /*
+     * Record what this file cost in model tokens. Reporting only — it never
+     * blocks the pipeline, so a metering failure cannot strand a log file
+     * mid-analysis.
+     */
+    await recordTokenUsage(
+      file.workspace_id,
+      embeddingTokens + analysis.tokens,
+      1
+    );
 
     if (analysis.findings.length > 0) {
       const findingRows = analysis.findings.map((finding) => ({

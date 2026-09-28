@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { recordAudit } from "@/lib/auth/audit";
 import { getAuthContext } from "@/lib/auth/dal";
+import { consumeScan, releaseScan } from "@/lib/billing/quota";
 import {
   formatFromFilename,
   uploadLimitFor,
@@ -105,6 +106,45 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  /*
+   * Daily scan quota.
+   *
+   * Claimed here rather than in the worker because this is the point of no
+   * return for the tenant: past it they hold a signed upload URL. The claim
+   * is atomic (see lib/billing/quota.ts), so concurrent uploads from the same
+   * workspace cannot both slip through the last remaining scan.
+   */
+  const quota = await consumeScan(
+    context.workspace.id,
+    context.workspace.plan,
+    context.isSuperAdmin
+  );
+
+  if (!quota.allowed) {
+    await recordAudit({
+      action: "billing.quota_exceeded",
+      actorId: context.userId,
+      workspaceId: context.workspace.id,
+      metadata: { used: quota.used, limit: quota.limit },
+    });
+
+    // 402 rather than 429: this is a plan ceiling, not a burst limit, and the
+    // client uses the distinction to decide between "slow down" and "upgrade".
+    return NextResponse.json(
+      {
+        error: `You have used all ${quota.limit} daily scans on the Free plan.`,
+        code: "quota_exceeded",
+        used: quota.used,
+        limit: quota.limit,
+        resetSeconds: quota.resetSeconds,
+      },
+      {
+        status: 402,
+        headers: { "Retry-After": String(quota.resetSeconds) },
+      }
+    );
+  }
+
   // Server-generated key. The client never chooses where its bytes land.
   const fileId = randomUUID();
   const storagePath = `${context.workspace.id}/${fileId}`;
@@ -126,6 +166,8 @@ export async function POST(request: NextRequest) {
   });
 
   if (insertError) {
+    // The scan was claimed but no upload will happen — give it back.
+    await releaseScan(context.workspace.id);
     console.error("[ingest] could not create file row", insertError.message);
 
     // 42501 is Postgres' insufficient_privilege, which is what an RLS denial
@@ -154,6 +196,7 @@ export async function POST(request: NextRequest) {
     .createSignedUploadUrl(storagePath);
 
   if (signError || !signed) {
+    await releaseScan(context.workspace.id);
     await supabase.from("log_files").delete().eq("id", fileId);
     console.error("[ingest] signing failed", signError?.message);
     return NextResponse.json(
@@ -176,5 +219,10 @@ export async function POST(request: NextRequest) {
     path: signed.path,
     token: signed.token,
     format,
+    quota: {
+      used: quota.used,
+      limit: quota.limit,
+      remaining: quota.limit === null ? null : Math.max(0, quota.limit - quota.used),
+    },
   });
 }
