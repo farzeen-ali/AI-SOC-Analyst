@@ -268,6 +268,7 @@ order**, or apply them with the CLI. Both are idempotent — safe to re-run.
 | `0005_remediation_checklists.sql` | Per-step remediation triage, the materialising trigger, and `workspace_threat_analytics()` |
 | `0006_mfa_claims.sql` | Adds the `has_mfa` claim to the access-token hook so MFA gating is a pure claim check, plus `debug_my_mfa()` |
 | `0007_billing_invites_metering.sql` | Stripe columns on `workspaces`, the plan→seats trigger, the `stripe_events` replay ledger, tokenized `workspace_invitations`, the `usage_daily` rollup, and the atomic `consume_scan_quota()` gate, plus `debug_my_billing()` |
+| `0008_drop_unreachable_usage_rpcs.sql` | Drops `platform_usage_series()` and `workspace_usage_totals()`. Both gated on `is_super_admin()`, which resolves `auth.uid()` — NULL for the service-role client their only caller uses, so they could never succeed. The aggregation moved into `lib/admin/queries.ts` |
 
 > **If ingestion fails with "operator does not exist: vector <=> vector"**,
 > `0004` has not been applied. The `<=>` operator is resolved through the
@@ -510,6 +511,55 @@ stripe listen --events checkout.session.completed,customer.subscription.updated,
 ```
 
 ---
+
+## End-to-end tests
+
+Playwright drives a **production build** against the real Supabase project.
+
+```bash
+npm run test:e2e
+```
+
+```bash
+npm run test:e2e:report
+```
+
+The first command builds, starts a server on port 3100, seeds disposable test
+tenants, and runs 65 specs. The second opens the HTML report.
+
+### What it covers
+
+| Spec | Covers |
+| --- | --- |
+| `01-marketing` | Landing hero, $20 pricing, legal pages, 404, theme toggle, mobile overflow, robots/sitemap, JSON-LD, `noindex` on invitations |
+| `02-auth` | Sign-in, bad-password handling and account-enumeration wording, signup validation, password strength, 11 protected routes redirecting, `no-store` on protected responses |
+| `03-dashboard` | Overview, threats, ingestion, settings, MFA enrolment, zero console errors, and RBAC for all three roles |
+| `04-billing-team` | Plan and seat display, scan meter, plan comparison, checkout entry points, team roster, tokenized invitations, seat enforcement |
+| `05-security` | Security headers and CSP, four Stripe webhook forgery attempts, unauthenticated and cross-origin API refusal, tenant isolation, sign-out and back-button |
+
+### Screenshots
+
+Every step writes a numbered, full-page capture to
+`test-results/screenshots/<spec>/<test>/NN-step.png`, and each one is attached
+to the HTML report.
+
+Captures scroll the page first. Sections wrapped in `<Reveal>` start at
+`opacity: 0` and animate in on intersection, and a full-page screenshot does
+not scroll — without that pass the images show empty bands where content
+exists. Worth knowing when writing assertions: **Playwright treats an
+`opacity: 0` element as visible**, so `toBeVisible()` will not catch this
+class of bug. Only the screenshot does.
+
+### Test tenants
+
+`e2e/auth.setup.ts` provisions one workspace with a Tenant Admin, a SOC
+Analyst and a Super Admin through the Supabase Admin API, then signs each in
+through the real form and saves a storage state. Accounts use
+`@guardai-e2e.test` addresses and per-run generated passwords, written to the
+gitignored `test-results/.auth/`. Delete that folder to force a fresh tenant.
+
+Seeding needs `SUPABASE_SERVICE_ROLE_KEY` and `NEXT_PUBLIC_SUPABASE_URL` in
+`.env.local`, and migrations `0001`–`0008` applied.
 
 ## Project structure
 

@@ -39,6 +39,29 @@ export interface AuthContext {
   isTenantAdmin: boolean;
 }
 
+/*
+ * The access-token hook is optional to *install* but load-bearing once MFA is
+ * in use: the second-factor gate in `proxy.ts` is driven entirely by the
+ * `has_mfa` claim, so a missing hook turns MFA enforcement off without any
+ * visible symptom. Warn once per process rather than failing — the app is
+ * still usable, and an operator who has not finished setup should be told
+ * which guarantee they are currently not getting.
+ */
+let warnedAboutMissingClaims = false;
+
+function warnIfClaimsMissing(raw: Record<string, unknown>): void {
+  if (warnedAboutMissingClaims) return;
+  if (raw.global_role !== undefined) return;
+
+  warnedAboutMissingClaims = true;
+  console.warn(
+    "[auth] Access token carries no GuardAI claims. The Custom Access Token " +
+      "Hook is not enabled (Dashboard → Authentication → Hooks). Workspace " +
+      "scoping falls back to a membership lookup, and — more importantly — " +
+      "the MFA step-up gate cannot fire, because it reads the `has_mfa` claim."
+  );
+}
+
 /** Verified session claims, or `null` when signed out. */
 export const getSessionContext = cache(
   async (): Promise<SessionContext | null> => {
@@ -48,6 +71,8 @@ export const getSessionContext = cache(
     if (error || !data?.claims?.sub) return null;
 
     const raw = data.claims;
+    warnIfClaimsMissing(raw);
+
     return {
       userId: raw.sub,
       email: typeof raw.email === "string" ? raw.email : "",

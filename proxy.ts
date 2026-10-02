@@ -156,7 +156,22 @@ export async function proxy(request: NextRequest) {
     return withNoStore(NextResponse.redirect(url));
   }
 
-  if (isSuperAdminRoute && claims?.global_role !== "super_admin") {
+  /*
+   * Super Admin gate.
+   *
+   * Only refuse when the claim is *present and wrong*. An absent claim means
+   * the Custom Access Token Hook is not configured, not that the caller is
+   * unprivileged — treating the two the same locks genuine Super Admins out
+   * of the console with no recovery path, because the redirect fires before
+   * the page can read the authoritative role from the database.
+   *
+   * Deferring is safe: `app/super-admin/layout.tsx` calls
+   * `requireSuperAdmin()`, which re-reads `global_role` from `profiles` and
+   * redirects anyone who does not hold it. The proxy is the optimistic
+   * check; the layout is the real one.
+   */
+  const claimedRole = claims?.global_role;
+  if (isSuperAdminRoute && claimedRole != null && claimedRole !== "super_admin") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     url.search = "?denied=super-admin";

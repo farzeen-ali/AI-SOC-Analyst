@@ -477,23 +477,6 @@ export interface Database {
         };
         Returns: number;
       };
-      platform_usage_series: {
-        Args: { p_days?: number };
-        Returns: {
-          day: string;
-          scans: number;
-          tokens: number;
-          ai_calls: number;
-        }[];
-      };
-      workspace_usage_totals: {
-        Args: { p_workspace_id: string };
-        Returns: {
-          scans_today: number;
-          scans_total: number;
-          tokens_total: number;
-        }[];
-      };
       seats_for_plan: {
         Args: { p: WorkspacePlan };
         Returns: number;

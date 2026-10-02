@@ -74,7 +74,20 @@ export async function updateSession(
     claims: {
       sub: raw.sub,
       email: typeof raw.email === "string" ? raw.email : undefined,
-      global_role: raw.global_role === "super_admin" ? "super_admin" : "user",
+      /*
+       * Left `undefined` when the claim is absent rather than defaulted to
+       * "user". Absent means the Custom Access Token Hook is not installed,
+       * which is not the same statement as "this person is unprivileged" —
+       * collapsing the two locks genuine Super Admins out of the console,
+       * because the route guard cannot then tell a real denial from a
+       * missing claim. Callers decide what to do with `undefined`.
+       */
+      global_role:
+        raw.global_role === "super_admin"
+          ? "super_admin"
+          : raw.global_role === "user"
+            ? "user"
+            : undefined,
       workspace_id:
         typeof raw.workspace_id === "string" ? raw.workspace_id : null,
       workspace_role:

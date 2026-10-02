@@ -98,26 +98,53 @@ export interface UsagePoint {
  * Platform usage over the trailing window, one row per day including days
  * with no activity — a sparse series would make a quiet weekend look like a
  * gap in instrumentation.
+ *
+ * Aggregated here rather than in Postgres. The obvious implementation is a
+ * SECURITY DEFINER function gated on `is_super_admin()`, but that helper
+ * resolves `auth.uid()`, which is NULL for the service-role client every
+ * admin query uses — so the function could never succeed through this call
+ * path. Summing a fortnight of rows in TypeScript needs no elevated function
+ * at all, and `requireSuperAdmin()` above is the authorisation check.
  */
 export async function getPlatformUsageSeries(days = 14): Promise<UsagePoint[]> {
   await requireSuperAdmin();
   const admin = createAdminClient();
 
-  const { data, error } = await admin.rpc("platform_usage_series", {
-    p_days: days,
-  });
+  const span = Math.max(1, days);
+  const today = new Date();
+  const start = new Date(today);
+  start.setUTCDate(start.getUTCDate() - (span - 1));
+
+  const startDay = start.toISOString().slice(0, 10);
+
+  const { data, error } = await admin
+    .from("usage_daily")
+    .select("day, scans, tokens, ai_calls")
+    .gte("day", startDay);
 
   if (error) {
     console.error("[admin] usage series failed", error.message);
     return [];
   }
 
-  return (data ?? []).map((row) => ({
-    day: row.day,
-    scans: Number(row.scans ?? 0),
-    tokens: Number(row.tokens ?? 0),
-    aiCalls: Number(row.ai_calls ?? 0),
-  }));
+  // Seed every day in the window so the chart has a continuous x-axis.
+  const buckets = new Map<string, UsagePoint>();
+  for (let offset = 0; offset < span; offset += 1) {
+    const cursor = new Date(start);
+    cursor.setUTCDate(cursor.getUTCDate() + offset);
+    const day = cursor.toISOString().slice(0, 10);
+    buckets.set(day, { day, scans: 0, tokens: 0, aiCalls: 0 });
+  }
+
+  for (const row of data ?? []) {
+    const bucket = buckets.get(row.day);
+    if (!bucket) continue;
+    bucket.scans += row.scans ?? 0;
+    bucket.tokens += row.tokens ?? 0;
+    bucket.aiCalls += row.ai_calls ?? 0;
+  }
+
+  return [...buckets.values()];
 }
 
 export interface TenantRow extends Workspace {

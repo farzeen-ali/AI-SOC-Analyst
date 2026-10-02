@@ -1,3 +1,4 @@
+import { isValidElement } from "react"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -44,11 +45,36 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  nativeButton,
+  role,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  /*
+   * Base UI stamps `role="button"` on anything rendered with
+   * `nativeButton={false}`, which turns a real `<a href>` into something
+   * assistive tech announces as a button: the user is told it performs an
+   * action when it actually navigates, and the link affordances (open in a
+   * new tab, copy address, Enter-only activation) stop matching what was
+   * announced.
+   *
+   * Passing `role={undefined}` does not help — Base UI's prop merge drops
+   * undefined values and its own default survives — so the correct role is
+   * stated explicitly whenever the rendered element is a link. Detection is
+   * by `href` rather than by element type so it holds for `next/link`, a
+   * plain `<a>`, or any other anchor-like wrapper.
+   *
+   * An explicit `role` from the caller always wins.
+   */
+  const rendersLink =
+    nativeButton === false &&
+    isValidElement<{ href?: unknown }>(props.render) &&
+    props.render.props.href != null
+
   return (
     <ButtonPrimitive
       data-slot="button"
+      nativeButton={nativeButton}
+      role={role ?? (rendersLink ? "link" : undefined)}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

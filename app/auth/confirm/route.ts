@@ -26,31 +26,46 @@ const VALID_TYPES: EmailOtpType[] = [
  *
  * Point the Supabase email template at this route:
  *   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup
+ *
+ * Until that template change is made in the Supabase dashboard, the default
+ * `{{ .ConfirmationURL }}` link is still active, which routes through
+ * Supabase's own verify endpoint and comes back here as a PKCE `?code=`
+ * instead of `token_hash`. Handle that case too rather than dead-ending on
+ * "link-invalid" — by the time Supabase issued that code it has already
+ * verified the address.
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
 
   const tokenHash = searchParams.get("token_hash");
+  const code = searchParams.get("code");
   const rawType = searchParams.get("type");
   const type = VALID_TYPES.includes(rawType as EmailOtpType)
     ? (rawType as EmailOtpType)
     : "email";
 
-  if (!tokenHash) {
+  if (!tokenHash && !code) {
     return NextResponse.redirect(`${origin}/login?reason=link-invalid`);
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.verifyOtp({
-    type,
-    token_hash: tokenHash,
-  });
+  const { data, error } = tokenHash
+    ? await supabase.auth.verifyOtp({ type, token_hash: tokenHash })
+    : await supabase.auth.exchangeCodeForSession(code as string);
 
   if (error) {
     console.error("[auth] confirm failed", error.code, error.message);
 
-    // Expired or already-used links are the common case and are not scary:
-    // send them to sign-in with a message they can act on.
+    // A failed code exchange typically means the link was opened in a
+    // different browser to the one that signed up — the address is already
+    // confirmed, they just need to sign in fresh. Only a failed token_hash
+    // verification is a genuine invalid/expired link.
+    if (code && !tokenHash) {
+      return NextResponse.redirect(
+        `${origin}/login?confirmed=1&reason=fresh-signin`
+      );
+    }
+
     const reason =
       error.code === "otp_expired" || /expired/i.test(error.message)
         ? "link-expired"

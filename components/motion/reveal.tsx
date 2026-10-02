@@ -66,7 +66,7 @@ export function Reveal({
 
   const activation =
     trigger === "view"
-      ? { whileInView: "shown", viewport: { once: true, amount: 0.2 } }
+      ? { whileInView: "shown", viewport: VIEWPORT }
       : { animate: "shown" };
 
   return (
@@ -82,6 +82,21 @@ export function Reveal({
   );
 }
 
+/*
+ * Entrance trigger.
+ *
+ * `amount: "some"` rather than a fraction: a fraction is measured against the
+ * element's own height, so a tall section only part-way into the viewport
+ * stays at `opacity: 0` even though the reader can already see it. A section
+ * whose heading sat 60px above the fold on a 720px-tall viewport rendered as
+ * a blank band until the user scrolled — visible, but invisible.
+ *
+ * The bottom margin grows the observer root so content resolves just before
+ * it scrolls into view, which also means a fast scroll never outruns the
+ * animation and leaves a gap.
+ */
+const VIEWPORT = { once: true, amount: "some", margin: "0px 0px 96px 0px" } as const;
+
 /** Parent that staggers direct `RevealItem` children. */
 export function RevealGroup({
   children,
@@ -96,7 +111,7 @@ export function RevealGroup({
     <motion.div
       initial="hidden"
       whileInView="shown"
-      viewport={{ once: true, amount: 0.15 }}
+      viewport={VIEWPORT}
       variants={{
         hidden: {},
         shown: { transition: { staggerChildren: stagger } },
